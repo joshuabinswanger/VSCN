@@ -89,9 +89,8 @@ const wall = await Promise.all(
     styles does, and the script switches the story off. */}
 <div class="info-page story" data-story-root data-paints-in data-story-on>
   <noscript><style>.story [data-in] { opacity: 1 !important; transform: none !important; }</style></noscript>
-  <!-- Josh 11-05, restructured: a frame each for the headline; the two
-       sentences; the works; the mission with the ways in; the next steps
-       with the way to reach us. -->
+  <!-- Josh 11-06: a frame each for the headline; the network with
+       Browse Portfolios; the works; the mission with the way to reach us. -->
   <!-- 1. HERO: the headline alone -->
   <section class="story-ch story-ch--hero" data-story-ch="hero">
     <div class="story-frame">
@@ -122,11 +121,6 @@ const wall = await Promise.all(
       <section class="story-ch story-ch--works" data-story-ch="works">
         <div class="story-frame story-frame--center">
           <div class="info-wall" aria-roledescription="carousel" aria-label={t("info.wall.heading")} data-info-wall>
-            {wall.length > 1 && (
-              <span class="info-wall__swipe" aria-hidden="true">
-                <span class="info-wall__swipe-line" />
-              </span>
-            )}
             <div class="info-wall__stage">
               {wall.length > 1 && (
                 <button type="button" class="info-wall__arrow info-wall__arrow--prev" data-wall-prev aria-label={t("info.wall.prev")}>
@@ -168,8 +162,9 @@ const wall = await Promise.all(
     )
   }
 
-  <!-- 3. MISSION -->
-  <section class="story-ch story-ch--about story-ch--mission" data-story-ch="mission">
+  <!-- 3. MISSION, then reach out. The last screen (Josh 11-06 dropped the
+       next steps): one scroll more goes to the portfolios. -->
+  <section class="story-ch story-ch--about story-ch--mission" data-story-ch="mission" data-onward={portfoliosHref}>
     <div class="story-frame">
       <div class="info-about">
         <div class="info-col" data-col="0">
@@ -179,22 +174,6 @@ const wall = await Promise.all(
             <li data-in style="--d: 0.30s">{t("info.mission.2")}</li>
             <li data-in style="--d: 0.45s">{t("info.mission.3")}</li>
           </ul>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 4. NEXT STEPS, then reach out. The last screen: one scroll more goes to the portfolios. -->
-  <section class="story-ch story-ch--about story-ch--steps" data-story-ch="steps" data-onward={portfoliosHref}>
-    <div class="story-frame">
-      <div class="info-about">
-        <div class="info-col" data-col="0">
-          <h2 class="info-heading" data-in>{t("info.h2.plan")}</h2>
-          <ul class="info-list">
-            <li data-in style="--d: 0.15s">{t("info.plan.1")}</li>
-            <li data-in style="--d: 0.30s">{t("info.plan.2")}</li>
-            <li data-in style="--d: 0.45s">{t("info.plan.3")}</li>
-          </ul>
           <div class="info-cta__row">
             <!--email_off--><a href="mailto:info@vscn.ch" class="btn-outline info-cta__btn" data-in style="--d: 0.7s">{t("info.cta.contact")}<span aria-hidden="true">→</span></a><!--/email_off-->
           </div>
@@ -202,6 +181,7 @@ const wall = await Promise.all(
       </div>
     </div>
   </section>
+
 </div>
 
 <style>
@@ -280,7 +260,7 @@ const wall = await Promise.all(
       opacity 0.4s ease,
       visibility 0s linear 0s;
   }
-  :global(:root:has(.story[data-story-on]:not([data-current="mission"], [data-current="steps"])) .views-pill) {
+  :global(:root:has(.story[data-story-on]:not([data-current="mission"])) .views-pill) {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
@@ -499,9 +479,8 @@ const wall = await Promise.all(
     transform: translateX(-24px);
   }
 
-  /* ── THE WAYS IN: a row of buttons under a list (Portfolios | Members
-     under the mission, Reach out under the next steps), the solid ones
-     the same width. */
+  /* ── THE WAYS IN: a row of buttons (Browse Portfolios under the network,
+     Reach out under the mission). */
   .info-cta__row {
     display: flex;
     flex-wrap: wrap;
@@ -550,65 +529,13 @@ const wall = await Promise.all(
     opacity: 0;
   }
 
-  /* THE SWIPE HINT (Josh 11-05): an arrow over the picture that keeps
-     nudging right while the row turns by itself, until the visitor moves
-     the row (data-touched, set by the carousel). */
-  .info-wall__swipe {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 2rem;
-    color: var(--color-dark);
-    transition: opacity 0.4s ease;
-
-    @media (--bp-mobile) {
-      margin-bottom: 1.25rem;
-    }
-  }
-  .info-wall[data-touched] .info-wall__swipe {
-    opacity: 0;
-  }
-  .info-wall__swipe-line {
-    position: relative;
-    display: block;
-    width: 3.5rem;
-    height: 1.5px;
-    background: currentColor;
-    animation: info-swipe 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-  }
-  .info-wall__swipe-line::after {
-    content: "";
-    position: absolute;
-    right: 0;
-    top: 50%;
-    width: 9px;
-    height: 9px;
-    border-top: 1.5px solid currentColor;
-    border-right: 1.5px solid currentColor;
-    transform: translate(0, -50%) rotate(45deg);
-    transform-origin: center;
-  }
-  @keyframes info-swipe {
-    0%,
-    100% {
-      transform: translateX(-10px);
-    }
-    50% {
-      transform: translateX(10px);
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .info-wall__swipe-line {
-      animation: none;
-    }
-  }
-
   /* ── 2. WORKS: ONE PICTURE AT A TIME ────────────────────────────────
      A row the visitor scrolls sideways, one slide its full width, snapped
      to the middle. The picture keeps its own shape at one height (the
      screen's, less the words under it), the artist and the project under
      it. No fades: the picture is simply there (Josh 11-04). */
   .info-wall {
-    --pic-h: min(calc(var(--story-vh) - 21rem), 640px);
+    --pic-h: min(calc(var(--story-vh) - 24rem), 560px);
     width: 100%;
   }
   .info-wall__stage {
@@ -665,12 +592,13 @@ const wall = await Promise.all(
     user-select: none;
   }
   /* Board 03.2: the name large, the project small under it. */
+  /* Josh 11-06: the words right under the picture. */
   .info-wall__name {
-    margin-top: 28px;
+    margin-top: 12px;
     color: var(--color-dark);
 
     @media (--bp-mobile) {
-      margin-top: 18px;
+      margin-top: 10px;
     }
   }
   .info-wall__project {
@@ -735,7 +663,7 @@ const wall = await Promise.all(
      less the gutters, and the arrows give way to the finger. */
   @media (--bp-mobile) {
     .info-wall {
-      --pic-h: min(calc(var(--story-vh) - 17rem), 125vw);
+      --pic-h: min(calc(var(--story-vh) - 19rem), 110vw);
     }
     .info-wall__stage {
       width: 100vw;
@@ -787,7 +715,6 @@ const wall = await Promise.all(
     let touchedAt = 0;
     const touch = () => {
       touchedAt = Date.now();
-      wall.setAttribute("data-touched", "");
     };
     for (const type of ["pointerdown", "touchstart", "wheel"] as const)
       wall.addEventListener(type, (e) => { if (type !== "wheel" || Math.abs((e as WheelEvent).deltaX) > Math.abs((e as WheelEvent).deltaY)) touch(); }, { passive: true, signal });
