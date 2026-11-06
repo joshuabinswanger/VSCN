@@ -101,16 +101,15 @@ const wall = await Promise.all(
     </div>
   </section>
 
-  <!-- 1b. THE NETWORK (Josh 11-06): who we are, the name in bold, and a
-       Browse Portfolios key that is the cue on: it glides to the works. -->
+  <!-- 1b. THE NETWORK (Josh 11-06): who we are, the name in bold, and the
+       cue on to the portfolios (a key until 11-06; "replace with a scroll
+       indicator"). -->
   <section class="story-ch story-ch--network" data-story-ch="network">
     <div class="story-frame">
       <div class="info-hero__text">
         <p class="info-hero__sub info-hero__lead" data-in>{t("info.network.pre")}<strong>{t("info.network.name")}</strong>{t("info.network.post")}</p>
-        <div class="info-cta__row">
-          <a href={portfoliosHref} class="btn-solid info-cta__btn info-cta__btn--down" data-story-next="works" data-in style="--d: 0.5s">{t("info.cta.browse")}<span aria-hidden="true">↓</span></a>
-        </div>
       </div>
+      <span class="story-cue" aria-hidden="true">{t("info.cta.browse")}<span class="story-cue__line"></span></span>
     </div>
   </section>
 
@@ -336,10 +335,11 @@ const wall = await Promise.all(
   .story[data-story-on] .story-cue {
     transition: opacity 0.4s ease;
     position: absolute;
-    bottom: 5rem;
+    /* Josh 11-06: lifted 15px. */
+    bottom: calc(5rem + 15px);
 
     @media (--bp-mobile) {
-      bottom: 2.5rem;
+      bottom: calc(2.5rem + 15px);
     }
     left: 50%;
     display: flex;
@@ -513,11 +513,17 @@ const wall = await Promise.all(
   .info-cta__btn span {
     transition: translate 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .info-cta__btn--down:hover span {
-    translate: 0 3px;
-  }
-  .info-cta__btn:not(.info-cta__btn--down):hover span {
+  .info-cta__btn:hover span {
     translate: 4px 0;
+  }
+
+  /* THE NETWORK: its one sentence across a wider measure (Josh 11-06: "give
+     the second sentence more space"), and its cue only while it is on screen. */
+  .story-ch--network .info-hero__text {
+    width: min(100%, 62rem);
+  }
+  .story[data-story-on]:not([data-current="network"]) .story-ch--network .story-cue {
+    opacity: 0;
   }
 
   /* THE WORKS CUE: the arrow, under the next frame's word (OUR MISSION), at the foot of
@@ -527,12 +533,12 @@ const wall = await Promise.all(
     padding-bottom: 6rem;
 
     @media (--bp-mobile) {
-      padding-bottom: 4rem;
+      padding-bottom: 6rem;
     }
   }
   .story[data-story-on] .story-ch--works .story-cue {
     @media (--bp-desktop) {
-      bottom: 1.5rem;
+      bottom: calc(1.5rem + 15px);
     }
   }
   .story[data-story-on]:not([data-current="works"]) .story-ch--works .story-cue {
@@ -604,7 +610,7 @@ const wall = await Promise.all(
   /* Board 03.2: the name large, the project small under it. */
   /* Josh 11-06: the words right under the picture. */
   .info-wall__name {
-    margin-top: 6px;
+    margin-top: 0;
     color: var(--color-dark);
   }
   .info-wall__project {
@@ -1286,40 +1292,6 @@ const wall = await Promise.all(
     signal.addEventListener("abort", () => clearTimeout(idle), { once: true });
   }
 
-  // ── THE NEXT KEY ──────────────────────────────────────────────────────
-  // Browse Portfolios (Josh 11-06) is a cue, not a way out: it glides to the
-  // works frame. Without that frame the link goes to the portfolios.
-  function nextKey(root: HTMLElement, still: boolean, signal: AbortSignal) {
-    for (const a of root.querySelectorAll<HTMLAnchorElement>("[data-story-next]")) {
-      a.addEventListener(
-        "click",
-        (e) => {
-          const ch = root.querySelector<HTMLElement>(`[data-story-ch="${a.dataset.storyNext}"]`);
-          const s = scrollerEl();
-          if (!ch || !s || e.metaKey || e.ctrlKey || e.shiftKey) return;
-          e.preventDefault();
-          const base = s === document.scrollingElement ? 0 : s.getBoundingClientRect().top;
-          const to = Math.max(0, ch.getBoundingClientRect().top - base + s.scrollTop - restLine(root));
-          if (still) {
-            s.scrollTop = to;
-            return;
-          }
-          const from = s.scrollTop;
-          const t0 = performance.now();
-          const tick = (now: number) => {
-            if (signal.aborted) return;
-            const k = Math.min(1, (now - t0) / WHEEL_MS);
-            const ease = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
-            s.scrollTop = from + (to - from) * ease;
-            if (k < 1) requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
-        },
-        { signal }
-      );
-    }
-  }
-
   document.addEventListener("astro:page-load", () => {
     const root = document.querySelector<HTMLElement>("[data-story-root]");
     if (!root) return;
@@ -1333,7 +1305,6 @@ const wall = await Promise.all(
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const href = root.querySelector<HTMLElement>("[data-onward]")?.dataset.onward;
     if (href) onward(href, signal);
-    nextKey(root, still, signal);
     if (still) {
       // Plain flow: no steps, no glide, everything shown.
       root.removeAttribute("data-story-on");
