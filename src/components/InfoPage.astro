@@ -13,7 +13,6 @@ interface Props {
 const { lang = "en" } = Astro.props;
 const t = useTranslations(lang);
 const portfoliosHref = lang === "de" ? "/de/community" : "/community";
-const peopleHref = `${portfoliosHref}?pattern=index`;
 
 // THE INFO PAGE TELLS A STORY AS IT SCROLLS (2026-11-02, Josh: "like a
 // storytelling with smooth scroll and animations"; reworked through
@@ -103,22 +102,16 @@ const wall = await Promise.all(
     </div>
   </section>
 
-  <!-- 1b. WHY: what images do -->
-  <section class="story-ch story-ch--intro" data-story-ch="intro">
-    <div class="story-frame">
-      <div class="info-hero__text">
-        <p class="info-hero__sub info-hero__lead" data-in>{t("info.hero.lead")}</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- 1c. THE NETWORK: the claim, then the network sentence with its
-       name in bold, on one screen before the works (Josh 11-06). -->
+  <!-- 1b. THE NETWORK (Josh 11-06): who we are, the name in bold, and a
+       Browse Portfolios key that is the cue on: it glides to the works. -->
   <section class="story-ch story-ch--network" data-story-ch="network">
     <div class="story-frame">
       <div class="info-hero__text">
-        <p class="info-hero__sub info-hero__claim" data-in>{t("info.hero.claim")}</p>
-        <p class="info-hero__sub" data-in style="--d: 0.5s">{t("info.network.pre")}<strong>{t("info.network.name")}</strong>{t("info.network.post")}</p>
+        <p class="info-hero__sub info-hero__lead" data-in>{t("info.network.pre")}<strong>{t("info.network.name")}</strong>{t("info.network.post")}</p>
+        <p class="info-hero__sub info-hero__lead" data-in style="--d: 0.4s">{t("info.network.body")}</p>
+        <div class="info-cta__row">
+          <a href={portfoliosHref} class="btn-solid info-cta__btn info-cta__btn--down" data-story-next="works" data-in style="--d: 0.8s">{t("info.cta.browse")}<span aria-hidden="true">↓</span></a>
+        </div>
       </div>
     </div>
   </section>
@@ -169,13 +162,13 @@ const wall = await Promise.all(
               )}
             </div>
           </div>
-          <span class="story-cue story-cue--bare" aria-hidden="true"><span class="story-cue__line"></span></span>
+          <span class="story-cue" aria-hidden="true">{t("info.h2.mission")}<span class="story-cue__line"></span></span>
         </div>
       </section>
     )
   }
 
-  <!-- 3. MISSION, then the two ways in -->
+  <!-- 3. MISSION -->
   <section class="story-ch story-ch--about story-ch--mission" data-story-ch="mission">
     <div class="story-frame">
       <div class="info-about">
@@ -186,10 +179,6 @@ const wall = await Promise.all(
             <li data-in style="--d: 0.30s">{t("info.mission.2")}</li>
             <li data-in style="--d: 0.45s">{t("info.mission.3")}</li>
           </ul>
-          <div class="info-cta__row">
-            <a href={portfoliosHref} class="btn-solid info-cta__btn" data-in style="--d: 0.7s">{t("info.cta.portfolios")}<span aria-hidden="true">→</span></a>
-            <a href={peopleHref} class="btn-solid info-cta__btn" data-in style="--d: 0.8s">{t("info.cta.members")}<span aria-hidden="true">→</span></a>
-          </div>
         </div>
       </div>
     </div>
@@ -388,27 +377,35 @@ const wall = await Promise.all(
   .story[data-story-on]:not([data-current="hero"]) .story-ch--hero .story-cue {
     opacity: 0;
   }
+  /* Josh 11-06: an arrow instead of the scroll sign. A shaft with a head,
+     nudging down. */
   .story-cue__line {
+    position: relative;
     width: 1px;
-    height: 2.5rem;
+    height: 2rem;
     background: currentColor;
-    transform-origin: top;
-    animation: story-cue 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+    animation: story-cue 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+  .story-cue__line::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-right: 1px solid currentColor;
+    border-bottom: 1px solid currentColor;
+    translate: -50% 0;
+    rotate: 45deg;
+    transform-origin: center;
   }
   @keyframes story-cue {
-    0% {
-      transform: scaleY(0);
+    0%,
+    100% {
+      transform: translateY(0);
     }
     50% {
-      transform: scaleY(1);
-      transform-origin: top;
-    }
-    51% {
-      transform-origin: bottom;
-    }
-    100% {
-      transform: scaleY(0);
-      transform-origin: bottom;
+      transform: translateY(0.5rem);
     }
   }
 
@@ -535,12 +532,20 @@ const wall = await Promise.all(
   .info-cta__btn span {
     transition: translate 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .info-cta__btn:hover span {
+  .info-cta__btn--down:hover span {
+    translate: 0 3px;
+  }
+  .info-cta__btn:not(.info-cta__btn--down):hover span {
     translate: 4px 0;
   }
 
-  /* THE WORKS CUE: the same growing line, without its word, at the foot of
+  /* THE WORKS CUE: the arrow, under the next frame's word (OUR MISSION), at the foot of
      the works frame while that frame is on screen. */
+  .story[data-story-on] .story-ch--works .story-cue {
+    @media (--bp-desktop) {
+      bottom: 1.5rem;
+    }
+  }
   .story[data-story-on]:not([data-current="works"]) .story-ch--works .story-cue {
     opacity: 0;
   }
@@ -603,7 +608,7 @@ const wall = await Promise.all(
      screen's, less the words under it), the artist and the project under
      it. No fades: the picture is simply there (Josh 11-04). */
   .info-wall {
-    --pic-h: min(calc(var(--story-vh) - 19rem), 640px);
+    --pic-h: min(calc(var(--story-vh) - 21rem), 640px);
     width: 100%;
   }
   .info-wall__stage {
@@ -1348,6 +1353,40 @@ const wall = await Promise.all(
     signal.addEventListener("abort", () => clearTimeout(idle), { once: true });
   }
 
+  // ── THE NEXT KEY ──────────────────────────────────────────────────────
+  // Browse Portfolios (Josh 11-06) is a cue, not a way out: it glides to the
+  // works frame. Without that frame the link goes to the portfolios.
+  function nextKey(root: HTMLElement, still: boolean, signal: AbortSignal) {
+    for (const a of root.querySelectorAll<HTMLAnchorElement>("[data-story-next]")) {
+      a.addEventListener(
+        "click",
+        (e) => {
+          const ch = root.querySelector<HTMLElement>(`[data-story-ch="${a.dataset.storyNext}"]`);
+          const s = scrollerEl();
+          if (!ch || !s || e.metaKey || e.ctrlKey || e.shiftKey) return;
+          e.preventDefault();
+          const base = s === document.scrollingElement ? 0 : s.getBoundingClientRect().top;
+          const to = Math.max(0, ch.getBoundingClientRect().top - base + s.scrollTop - restLine(root));
+          if (still) {
+            s.scrollTop = to;
+            return;
+          }
+          const from = s.scrollTop;
+          const t0 = performance.now();
+          const tick = (now: number) => {
+            if (signal.aborted) return;
+            const k = Math.min(1, (now - t0) / WHEEL_MS);
+            const ease = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+            s.scrollTop = from + (to - from) * ease;
+            if (k < 1) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        },
+        { signal }
+      );
+    }
+  }
+
   document.addEventListener("astro:page-load", () => {
     const root = document.querySelector<HTMLElement>("[data-story-root]");
     if (!root) return;
@@ -1361,6 +1400,7 @@ const wall = await Promise.all(
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const href = root.querySelector<HTMLElement>("[data-onward]")?.dataset.onward;
     if (href) onward(href, signal);
+    nextKey(root, still, signal);
     if (still) {
       // Plain flow: no steps, no glide, everything shown.
       root.removeAttribute("data-story-on");
