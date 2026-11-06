@@ -103,22 +103,22 @@ const wall = await Promise.all(
     </div>
   </section>
 
-  <!-- 1b. WHY: the two sentences -->
+  <!-- 1b. WHY: what images do -->
   <section class="story-ch story-ch--intro" data-story-ch="intro">
     <div class="story-frame">
       <div class="info-hero__text">
         <p class="info-hero__sub" data-in>{t("info.hero.lead")}</p>
-        <p class="info-hero__sub info-hero__claim" data-in style="--d: 0.5s">{t("info.hero.claim")}</p>
       </div>
     </div>
   </section>
 
-  <!-- 1c. THE NETWORK: one sentence, its own screen, before the works
-       (Josh 11-06), the network's name in bold. -->
+  <!-- 1c. THE NETWORK: the claim, then the network sentence with its
+       name in bold, on one screen before the works (Josh 11-06). -->
   <section class="story-ch story-ch--network" data-story-ch="network">
     <div class="story-frame">
       <div class="info-hero__text">
-        <p class="info-hero__sub" data-in>{t("info.network.pre")}<strong>{t("info.network.name")}</strong>{t("info.network.post")}</p>
+        <p class="info-hero__sub info-hero__claim" data-in>{t("info.hero.claim")}</p>
+        <p class="info-hero__sub" data-in style="--d: 0.5s">{t("info.network.pre")}<strong>{t("info.network.name")}</strong>{t("info.network.post")}</p>
       </div>
     </div>
   </section>
@@ -337,6 +337,10 @@ const wall = await Promise.all(
     @media (--bp-desktop) {
       white-space: nowrap;
     }
+  }
+  /* The network's name, bolder than the voice's own weight (Josh 11-06). */
+  .story-ch--network strong {
+    font-weight: 800;
   }
   .info-hero__text {
     display: flex;
@@ -766,6 +770,11 @@ const wall = await Promise.all(
   // screen, one picture every AUTO_MS; a visitor moving it (finger, mouse,
   // arrows) pauses that for IDLE_MS and puts the swipe hint away.
   const AUTO_MS = 3500;
+  // Josh 11-06: the first turn comes about 1.5 s after the frame has come to
+  // rest. "Arrived" is when the frame becomes the current one, mid swipe,
+  // a few tenths before it rests; measured 11-06 on a phone swipe, this
+  // lands 1.4 to 1.6 s after the rest.
+  const FIRST_MS = 1500;
   const IDLE_MS = 8000;
 
   function carousel(root: HTMLElement, wall: HTMLElement, track: HTMLElement, slides: HTMLElement[], signal: AbortSignal) {
@@ -788,8 +797,9 @@ const wall = await Promise.all(
         return;
       }
       if (!arrived) arrived = now;
-      const since = Math.max(arrived, turned, touchedAt ? touchedAt + IDLE_MS - AUTO_MS : 0);
-      if (now - since < AUTO_MS) return;
+      const wait = turned < arrived ? FIRST_MS : AUTO_MS;
+      const since = Math.max(arrived, turned, touchedAt ? touchedAt + IDLE_MS - wait : 0);
+      if (now - since < wait) return;
       turned = now;
       go(at + 1);
     }, 250);
