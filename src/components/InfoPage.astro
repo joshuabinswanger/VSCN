@@ -129,19 +129,20 @@ const wall = await Promise.all(
                 {wall.map((tile, i) => (
                   <li class="info-wall__slide" data-wall-slide aria-hidden={i === 0 ? undefined : "true"} data-current={i === 0 ? "" : undefined}>
                     <a href={tile.href} class="info-wall__tile" tabindex={i === 0 ? undefined : -1} draggable="false">
+                      <span class="info-wall__pic" style={`--ar: ${tile.width / tile.height}`}>
                       <img
                         src={tile.rendered.src}
                         srcset={tile.rendered.srcSet.attribute}
                         sizes="(max-width: 767px) 92vw, 600px"
                         width={tile.width}
                         height={tile.height}
-                        style={`--ar: ${tile.width / tile.height}`}
                         alt={tile.alt}
                         loading={i < 2 ? "eager" : "lazy"}
                         decoding="async"
                         draggable="false"
                       />
                       {tile.project && <span class="info-wall__project">{tile.project}</span>}
+                      </span>
                       <span class="info-wall__name">{tile.name}</span>
                     </a>
                   </li>
@@ -536,13 +537,30 @@ const wall = await Promise.all(
 
   /* THE WORKS CUE: the arrow, under the next frame's word (OUR MISSION), at the foot of
      the works frame while that frame is on screen. */
-  /* Josh 11-06: the cards "a bit higher" in their screen. */
+  /* THE NAME STANDS ON THE CUE (2026-11-06, Josh: "the name should be
+     fixed above the scroll indicator"). The wall fills its frame down to a
+     line just above OUR MISSION; every slide's name sits on that line, the
+     same place whichever picture is up, and the picture with its
+     description is centred in the room above. The foot is the cue's
+     bottom, its height (~64px) and a gap. */
   .story-ch--works .story-frame {
-    padding-bottom: 6rem;
+    padding-bottom: calc(1.5rem + 15px + 82px);
 
     @media (--bp-mobile) {
-      padding-bottom: 6rem;
+      padding-bottom: calc(2.5rem + 15px + 82px);
     }
+  }
+  .story-ch--works .info-wall {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .story-ch--works .info-wall__stage {
+    flex: 1;
+    display: flex;
+  }
+  .story-ch--works .info-wall__slides {
+    flex: 1;
   }
   .story[data-story-on] .story-ch--works .story-cue {
     @media (--bp-desktop) {
@@ -595,7 +613,7 @@ const wall = await Promise.all(
     display: flex;
     flex: 0 0 100%;
     justify-content: center;
-    align-items: center;
+    align-items: stretch;
     scroll-snap-align: center;
     scroll-snap-stop: always;
   }
@@ -608,6 +626,15 @@ const wall = await Promise.all(
     text-decoration: none;
     -webkit-user-drag: none;
   }
+  /* The picture and its description, centred in the room above the name. */
+  .info-wall__pic {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+  }
   .info-wall__tile img {
     display: block;
     /* As wide as its shape allows at --pic-h, never past the slide; the
@@ -617,20 +644,17 @@ const wall = await Promise.all(
     border-radius: var(--radius-sm);
     user-select: none;
   }
-  /* Board 03.2 had the name large, the project small under it; reversed 11-06. */
-  /* Josh 11-06: the words right under the picture. */
-  /* Josh 11-06: the description right under the picture, then the name,
-     a step bigger, after a gap. Without a description the name takes its
-     place under the picture. */
+  /* Board 03.2 had the name large, the project small under it; Josh 11-06
+     reversed it: the description right under the picture and no wider than
+     it, the name below on the cue's line. */
   .info-wall__name {
     margin-top: 10px;
     color: var(--color-dark);
   }
-  .info-wall__tile img + .info-wall__name {
-    margin-top: 0;
-  }
   .info-wall__project {
-    margin-top: 0;
+    box-sizing: border-box;
+    max-width: min(100%, calc(var(--pic-h) * var(--ar, 0.8)));
+    margin-top: 4px;
     color: var(--color-muted);
   }
   /* The card's arrows (communityCard.css): a stroked chevron beside each
@@ -701,9 +725,8 @@ const wall = await Promise.all(
       padding-bottom: calc(8rem + var(--story-vh) * 0.2);
     }
     .story-ch--works .story-frame {
-      justify-content: flex-start;
-      padding-top: max(1rem, calc(2rem + (var(--story-vh) - 8rem - var(--pic-h) - 5rem) / 2 - var(--story-vh) * 0.1));
-      padding-bottom: 0;
+      padding-top: 1rem;
+      padding-bottom: calc(2.5rem + 15px + 82px);
     }
     /* Josh 11-06: "a bit more horizontal padding" round the mission. */
     .story-ch--mission .info-col {
