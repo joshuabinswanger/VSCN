@@ -21,6 +21,7 @@ import type { GalleryItem } from "./gallery.ts";
 import { carouselSettings } from "./carousels.ts";
 import { dissolve, moveCarousel, moveCarouselToProject } from "./carouselEditor.ts";
 import { WORK_SIZE_PX, workSize, workSizeWidth, type WorkSize } from "./workSize.ts";
+import { bindMoveKey } from "./moveMenu.ts";
 
 /** The same two queries as custom-media.css; a drag needs a pointer that can drag. */
 export const DESKTOP_QUERY = "(767px < width) and ((not (pointer: coarse)) or (500px < height))";
@@ -220,6 +221,12 @@ export function buildTray(hooks: TrayHooks, unit: TrayUnit): HTMLElement | null 
     if (!lead) return hooks.moveLocal(unit.carouselId, target);
     hooks.commit(moveCarouselToProject(hooks.gallery(), unit.indices[0], target), { carouselId: unit.carouselId, control: "project" });
   });
+  // THE MOVE KEY beside Dissolve (2026-11-04): the select above is its engine.
+  const moveTo = el.querySelector<HTMLButtonElement>("[data-carousel-moveto]");
+  if (moveTo) {
+    moveTo.title = s["profile.deck.move"];
+    bindMoveKey(moveTo, [{ label: s["profile.project.select"], select: projectSelect, wrap: projectWrap }]);
+  }
 
   // THE TRAY: a thumbnail button per slide, the selected one pressed, then
   // the + slot. The first slide is selected unless the member picked another.

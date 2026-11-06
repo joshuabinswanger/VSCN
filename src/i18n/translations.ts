@@ -67,6 +67,10 @@ export const ui: Record<string, Record<string, string>> = {
     "community.filter.tags.all": "All tags",
     "community.filter.tags.search": "Search tags…",
     "community.filter.tags.clear": "Clear",
+    "community.filter.who": "Show",
+    "community.filter.who.all": "Everyone",
+    "community.filter.who.sci": "Scientists",
+    "community.filter.who.vis": "Visual creators",
     "community.sort": "Sort",
     "community.sort.date": "Date",
     "community.sort.random": "Random",
@@ -427,8 +431,13 @@ export const ui: Record<string, Record<string, string>> = {
     // already have landed — only the profile write was skipped. The tail says
     // what was NOT saved (the profile), not "nothing".
     "profile.gallery.saveFailed": "The text for image {n} could not be saved.",
+    // The work by its place in its project, as the list shows it (finding 27).
+    "profile.gallery.saveFailedIn": "The text for work {n} in “{project}” could not be saved.",
     "profile.gallery.saveFailed.tail":
       "Your profile was not saved — please try again.",
+    // A refusal is not a hiccup: the same words are refused every time.
+    "profile.gallery.saveFailed.refused":
+      "The server refused it, so saving it unchanged will not help: shorten or correct its texts, then save. Your profile was not saved.",
     // ONE MESSAGE PER CAUSE (see GalleryErrorCode in src/lib/gallery.ts). The
     // single "please try again" above was wrong advice for most of them — an
     // expired session and a file that will never fit do not improve on a
@@ -657,6 +666,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.save.error.session": "Could not save: your sign-in has expired. Sign in again, then try once more.",
     "profile.save.offline": "You appear to be offline. Check your connection and try again.",
     "profile.save.slow": "Saving is taking longer than usual. Check your connection — the save continues in the background.",
+    "profile.save.stale": "Your profile was saved in another tab or window since you opened it here, so this tab can no longer save. Reload to continue from the latest version; what you typed here is offered back after the reload.",
+    "profile.save.reload": "Reload",
     "profile.save.waitUploads": "Please wait for uploads to finish before saving.",
     "profile.validation.tooLong": "{field} must be {n} characters or fewer.",
     "profile.validation.tooManyWords": "{field} must be {n} words or fewer.",
@@ -707,6 +718,7 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.done.disclaimer":
       "Note: Your profile may take a moment to appear in the public community feed. You can edit it any time on your profile page.",
     "onboarding.done.edit": "Edit profile",
+    "profile.works.editProfile": "Edit profile",
     "onboarding.done.goCommunity": "Go to community",
     "onboarding.done.disclaimer.unverified":
       "Your profile is hidden until you verify your email — the link is in your inbox. Once verified, you appear in the directory automatically.",
@@ -813,6 +825,10 @@ export const ui: Record<string, Record<string, string>> = {
     "community.filter.tags.all": "Alle Tags",
     "community.filter.tags.search": "Tags suchen…",
     "community.filter.tags.clear": "Zurücksetzen",
+    "community.filter.who": "Zeigen",
+    "community.filter.who.all": "Alle",
+    "community.filter.who.sci": "Wissenschaft",
+    "community.filter.who.vis": "Gestaltung",
     "community.sort": "Sortieren",
     "community.sort.date": "Datum",
     "community.sort.random": "Zufällig",
@@ -1128,8 +1144,11 @@ export const ui: Record<string, Record<string, string>> = {
       "Bestätige deine E-Mail, um weitere Bilder hinzuzufügen. Der Link ist in deinem Posteingang.",
     "profile.gallery.error": "Bild konnte nicht hochgeladen werden. Bitte erneut versuchen.",
     "profile.gallery.saveFailed": "Der Text zu Bild {n} konnte nicht gespeichert werden.",
+    "profile.gallery.saveFailedIn": "Der Text zu Werk {n} in „{project}“ konnte nicht gespeichert werden.",
     "profile.gallery.saveFailed.tail":
       "Das Profil wurde nicht gespeichert – bitte erneut versuchen.",
+    "profile.gallery.saveFailed.refused":
+      "Der Server hat ihn abgelehnt, unverändert zu speichern hilft also nicht: Kürze oder korrigiere die Texte, dann speichere. Das Profil wurde nicht gespeichert.",
     "profile.gallery.err.tooBig": "Über 25 MB. Bitte kleiner exportieren.",
     "profile.gallery.err.svg":
       "SVGs können nicht hochgeladen werden. Als PNG oder JPEG exportieren.",
@@ -1299,6 +1318,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.save.error.session": "Speichern fehlgeschlagen: Deine Anmeldung ist abgelaufen. Melde dich erneut an und versuche es noch einmal.",
     "profile.save.offline": "Du scheinst offline zu sein. Prüfe deine Verbindung und versuche es erneut.",
     "profile.save.slow": "Das Speichern dauert länger als üblich. Prüfe deine Verbindung — das Speichern läuft im Hintergrund weiter.",
+    "profile.save.stale": "Dein Profil wurde seit dem Öffnen in einem anderen Tab oder Fenster gespeichert, darum kann dieser Tab nicht mehr speichern. Lade die Seite neu, um beim neuesten Stand weiterzumachen; was du hier eingegeben hast, wird dir danach wieder angeboten.",
+    "profile.save.reload": "Neu laden",
     "profile.save.waitUploads": "Bitte warten, bis die Uploads abgeschlossen sind.",
     "profile.validation.tooLong": "{field} darf höchstens {n} Zeichen lang sein.",
     "profile.validation.tooManyWords": "{field} darf höchstens {n} Wörter haben.",
@@ -1352,6 +1373,7 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.done.disclaimer":
       "Hinweis: Es kann einen Moment dauern, bis dein Profil im öffentlichen Community-Feed erscheint. Du kannst es jederzeit auf deiner Profilseite bearbeiten.",
     "onboarding.done.edit": "Profil bearbeiten",
+    "profile.works.editProfile": "Profil bearbeiten",
     "onboarding.done.goCommunity": "Zur Community",
     "onboarding.done.disclaimer.unverified":
       "Dein Profil bleibt verborgen, bis du deine E-Mail bestätigt hast — der Link liegt in deinem Posteingang. Danach erscheinst du automatisch im Verzeichnis.",

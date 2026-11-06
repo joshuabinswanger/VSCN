@@ -96,6 +96,17 @@ export function editorDraft<T>(options: {
     const stored: StoredDraft<T> = { version, at: Date.now(), loadedAt, value: words ? read() : null };
     try { sessionStorage.setItem(key, JSON.stringify(stored)); return words; } catch { return false; }
   };
+  /**
+   * After dispose the form is gone and read() cannot run: a write of this
+   * tab's that lands then moves the stored draft's base stamp only, so the
+   * return does not call that write one made "elsewhere".
+   */
+  const restamp = () => {
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(key) ?? 'null') as StoredDraft<T> | null;
+      if (stored) sessionStorage.setItem(key, JSON.stringify({ ...stored, loadedAt }));
+    } catch { /* Storage may be unavailable. */ }
+  };
   const focusAfter = (target: HTMLElement | null | undefined) => {
     const fallback = root.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
     const el = target ?? fallback ?? root;
@@ -197,7 +208,25 @@ export function editorDraft<T>(options: {
     keep: persist,
     discard() { baseline = JSON.stringify(readDirty()); wordsBaseline = JSON.stringify(read()); remove(); controller.abort(); },
     /** After a Save: the page holds the server's copy now, written at `at` (this tab's clock, which is at or after the stamp the save wrote). */
-    saved(at: number = Date.now()) { offered = false; baseline = JSON.stringify(readDirty()); wordsBaseline = JSON.stringify(read()); loadedAt = at; remove(); banner.remove(); },
+    /**
+     * This tab wrote the profile at `at` (the stamp it stored) without settling
+     * the form — a gallery write, or a Save the member typed through. The
+     * draft is based on that copy now, so a return no longer calls this tab's
+     * own write one "saved elsewhere" (audit finding 14). A draft still on
+     * offer keeps the stamp it was written against.
+     */
+    seen(at: number) {
+      loadedAt = at;
+      if (signal.aborted) restamp();
+      else if (!offered) persist();
+    },
+    saved(at: number = Date.now()) {
+      // A Save that lands after the page was left (audit findings 14 and 31):
+      // the form is gone, so readDirty() would throw on its missing fields,
+      // and the draft written on leaving holds exactly what this Save stored.
+      if (signal.aborted) { loadedAt = at; remove(); return; }
+      offered = false; baseline = JSON.stringify(readDirty()); wordsBaseline = JSON.stringify(read()); loadedAt = at; remove(); banner.remove();
+    },
     dispose() { persist(); clearTimeout(timer); controller.abort(); banner.remove(); },
   };
 }

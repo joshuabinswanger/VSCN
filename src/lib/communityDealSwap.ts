@@ -41,9 +41,11 @@ document.addEventListener("astro:before-swap", (e) => {
     asked && ev.newDocument.querySelector(`.tag-filter__option[data-tag="${CSS.escape(asked)}"]`)
       ? asked
       : "";
+  const askedWho = params.get("who");
+  const who = askedWho === "sci" || askedWho === "vis" ? askedWho : "";
   const seed =
     (ev.navigationType === "traverse" && storedSeed()) ||
     (Math.floor(Math.random() * 0xffffffff) || 1) >>> 0;
   (window as unknown as { __vscnDeal?: number }).__vscnDeal = seed;
-  dealPagesInto(grid, seed, tag);
+  dealPagesInto(grid, seed, tag, who);
 });

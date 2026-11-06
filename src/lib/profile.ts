@@ -26,6 +26,8 @@ export interface ProfileUpdateOptions
   active?: boolean;
   /** The gallery ids this tab last saw stored — see ProfileWriteOptions. */
   galleryBase?: readonly string[];
+  /** Sees the stored stamp before the write — see ProfileWriteOptions. */
+  checkStored?: (storedUpdatedAt: number | undefined) => void;
 }
 
 export async function handleProfileUpdate(
@@ -38,6 +40,7 @@ export async function handleProfileUpdate(
     previousPhotoImageId,
     active,
     galleryBase,
+    checkStored,
     photoURL: passedPhotoURL,
     photoImageId: passedPhotoImageId,
     ...data
@@ -95,12 +98,13 @@ export async function handleProfileUpdate(
     ...data,
     ...(photoURL !== undefined ? { photoURL } : {}),
     ...(photoImageId !== undefined ? { photoImageId } : {}),
-    updatedAt: new Date(),
+    // A caller that tracks its own writes passes the stamp it chose.
+    updatedAt: data.updatedAt ?? new Date(),
   };
 
   let gallery: GalleryMerge | undefined;
   try {
-    gallery = (await updateUserProfile(user.uid, profileData, { active, galleryBase })) ?? undefined;
+    gallery = (await updateUserProfile(user.uid, profileData, { active, galleryBase, checkStored })) ?? undefined;
   } catch (error) {
     // A DEFINITIVE refusal orphans the avatar record just made live: nothing
     // will ever point at it, no sweeper takes a live record, and each retry

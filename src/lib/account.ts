@@ -29,11 +29,14 @@ export async function syncEmail(): Promise<string> {
  * what happens after verifyBeforeUpdateEmail completes on the next sign-in.
  * Best-effort: reconcileEmails sweeps nightly for anything missed here.
  */
-export async function ensureEmailSynced(user: User, storedEmail: string | undefined): Promise<void> {
-  if (!user.email || user.email === storedEmail) return;
+/** True when the sync ran, and so wrote the profile. */
+export async function ensureEmailSynced(user: User, storedEmail: string | undefined): Promise<boolean> {
+  if (!user.email || user.email === storedEmail) return false;
   try {
     await syncEmail();
+    return true;
   } catch (err) {
     console.warn("[account] email sync skipped:", err);
+    return false;
   }
 }

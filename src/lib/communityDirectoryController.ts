@@ -238,10 +238,23 @@ let wallCols = 0;
 // astro:page-load — the module survives swaps, the choice should not.
 let tagFilter = "";
 
+// Scientists or visual creators, or everyone (""). The switch atop the Tags
+// card; mirrors into ?who= like the tag, reset on every page-load. Every
+// cell and row carries its member's data-who (whoAttr in CommunityGrid).
+let whoFilter: "" | "sci" | "vis" = "";
+
+function whoFromURL(): "" | "sci" | "vis" {
+  const w = new URLSearchParams(window.location.search).get("who");
+  return w === "sci" || w === "vis" ? w : "";
+}
+
 /** One rule for a grid cell and an index row alike — both carry the same
- *  build-stamped pipe-delimited data-tags. */
+ *  build-stamped pipe-delimited data-tags and data-who. */
 function memberMatches(el: HTMLElement): boolean {
-  return !tagFilter || (el.dataset.tags ?? "").includes(`|${tagFilter}|`);
+  return (
+    (!tagFilter || (el.dataset.tags ?? "").includes(`|${tagFilter}|`)) &&
+    (!whoFilter || (el.dataset.who ?? "").includes(`|${whoFilter}|`))
+  );
 }
 
 // ── The Images view's sort ────────────────────────────────────────────────
@@ -886,18 +899,28 @@ function reflectTagUI(mode: LayoutMode) {
       }
     });
   liftTagRow(activeRow);
+  // The who switch's pressed segment, and its name for the float.
+  let whoLabel = "";
+  document.querySelectorAll<HTMLButtonElement>(".who-filter > button").forEach((btn) => {
+    const active = (btn.dataset.who ?? "") === whoFilter;
+    btn.setAttribute("aria-pressed", String(active));
+    if (active && whoFilter) whoLabel = btn.textContent?.trim() ?? "";
+  });
   const label = document.getElementById("tag-filter-label");
-  if (label) label.textContent = activeLabel || (label.dataset.rest ?? "");
-  // The same name over the views pill, so the filter shows with the card shut.
-  const float = document.getElementById("tag-float");
-  const floatName = document.getElementById("tag-float-name");
-  if (float && floatName) {
-    floatName.textContent = activeLabel;
-    float.hidden = !activeLabel;
+  if (label) label.textContent = activeLabel || whoLabel || (label.dataset.rest ?? "");
+  // The same names over the views pill, so the filter shows with the card
+  // shut — one chip for who, one for the tag, each with its own ×.
+  for (const [id, text] of [["who-float", whoLabel], ["tag-float", activeLabel]] as const) {
+    const float = document.getElementById(id);
+    const floatName = document.getElementById(`${id}-name`);
+    if (float && floatName) {
+      floatName.textContent = text;
+      float.hidden = !text;
+    }
   }
   document
     .getElementById("tag-filter-btn")
-    ?.classList.toggle("filter-word--set", Boolean(tagFilter));
+    ?.classList.toggle("filter-word--set", Boolean(tagFilter || whoFilter));
   reflectTagClear();
 }
 
@@ -933,7 +956,7 @@ function reflectTagClear() {
   const clear = document.getElementById("tag-filter-clear");
   if (!clear) return;
   const search = document.getElementById("tag-filter-search") as HTMLInputElement | null;
-  clear.hidden = !tagFilter && !(search?.value.trim() ?? "");
+  clear.hidden = !tagFilter && !whoFilter && !(search?.value.trim() ?? "");
 }
 
 // One shuffle per VIEW, not per keystroke: page load and the view toggle
@@ -1411,6 +1434,7 @@ document.addEventListener("astro:page-load", () => {
     if (tag && document.querySelector(`.tag-filter__option[data-tag="${CSS.escape(tag)}"]`)) {
       tagFilter = tag;
     }
+    whoFilter = whoFromURL();
     // The view first: the dropdown's list depends on it (reflectTagOptions).
     const mode = modeFromURL();
     reflectTagUI(mode);
@@ -1534,12 +1558,17 @@ document.addEventListener("astro:page-load", () => {
     document
       .getElementById("tag-float-name")
       ?.addEventListener("click", () => tagBtn?.click(), { signal: life });
-    document.getElementById("tag-float-x")?.addEventListener("click", () => {
-      closeBarMenus();
-      const url = new URL(window.location.href);
-      url.searchParams.delete("tag");
-      goTo(url);
-    }, { signal: life });
+    document
+      .getElementById("who-float-name")
+      ?.addEventListener("click", () => tagBtn?.click(), { signal: life });
+    for (const [id, param] of [["tag-float-x", "tag"], ["who-float-x", "who"]] as const) {
+      document.getElementById(id)?.addEventListener("click", () => {
+        closeBarMenus();
+        const url = new URL(window.location.href);
+        url.searchParams.delete(param);
+        goTo(url);
+      }, { signal: life });
+    }
     tagBtn?.addEventListener("click", () => {
       if (!tagPanel) return;
       const opening = toggleBarMenu("tag-filter-panel");
@@ -1570,7 +1599,7 @@ document.addEventListener("astro:page-load", () => {
     // With only search text to clear, the card stays open on the full list.
     document.getElementById("tag-filter-clear")?.addEventListener("click", () => {
       if (tagSearch) tagSearch.value = "";
-      if (!tagFilter) {
+      if (!tagFilter && !whoFilter) {
         reflectTagOptions(mode);
         reflectTagClear();
         // Same rule as opening: no keyboard summoned on a touch screen.
@@ -1580,8 +1609,23 @@ document.addEventListener("astro:page-load", () => {
       closeBarMenus();
       const url = new URL(window.location.href);
       url.searchParams.delete("tag");
+      url.searchParams.delete("who");
       goTo(url);
     }, { signal: life });
+
+    // The who switch: a navigation to ?who=, like a tag pick, so it is a
+    // history entry and survives reload and sharing.
+    document.querySelectorAll<HTMLButtonElement>(".who-filter > button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const picked = btn.dataset.who ?? "";
+        if (picked === whoFilter) return;
+        closeBarMenus();
+        const url = new URL(window.location.href);
+        if (picked) url.searchParams.set("who", picked);
+        else url.searchParams.delete("who");
+        goTo(url);
+      }, { signal: life });
+    });
 
     document.querySelectorAll<HTMLButtonElement>(".tag-filter__option").forEach((opt) => {
       opt.addEventListener("click", () => {

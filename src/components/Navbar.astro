@@ -467,7 +467,9 @@ import "../styles/type.css";
      sheet rules alike. */
   .nav-links #nav-join,
   .nav-links #nav-join:visited {
-    background: var(--nav-paper);
+    background: var(--glass-paper);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
     color: var(--nav-ink);
     box-shadow: inset 0 0 0 1px var(--color-border);
   }
@@ -925,6 +927,25 @@ import "../styles/type.css";
      phone's menu sheet, and it still goes home (which closes the sheet). */
   :root:has(#join-sheet[data-open]) .brand-ticker[data-wordmark="compact"] {
     z-index: 101;
+    /* The title's row spans the screen: lifted, it must not take the taps
+       meant for the close key at its right end (2026-11-02, Josh: "I can't
+       close the window anymore"). Only the word itself stays a link. */
+    pointer-events: none;
+  }
+  :root:has(#join-sheet[data-open]) .brand-ticker[data-wordmark="compact"] .brand-link {
+    pointer-events: auto;
+  }
+  /* NOTHING BEHIND THE SHEET (2026-11-04, Josh: "when I press into the
+     field the login page slides up a little bit on my iPhone and reveals the
+     portfolio page behind it"). iOS moves a fixed box around the keyboard as
+     it likes and cannot be told not to, so instead there is nothing to
+     reveal: once the sheet has faded in, the page under it is hidden and
+     only the root's paper shows wherever the sheet slides. Shown again at
+     once on close, so the sheet fades out over the page. No overflow lock
+     (see the sheet note above). */
+  :root:has(#join-sheet[data-open]) .page-wrap {
+    visibility: hidden;
+    transition: visibility 0s linear 0.3s;
   }
   /* A phone delays the title's z-index for the menu sheet's leave; lifted
      over this sheet it comes at once. */
@@ -1033,11 +1054,21 @@ import "../styles/type.css";
 
   /* THE PORTFOLIOS KEY: an outlined pill with a back chevron, the editor's
      ‹ Projects drawn at the header's size, centred in the header row. */
+  /* CENTRED FROM THE RIGHT, IN VW (2026-11-04, Josh's recording: "the
+     portfolio button overlaps the profile button on up swipe"). While the
+     header rides away or back, the nav carries a transform (global.css),
+     and a transformed box becomes the containing block of its fixed
+     children. On a phone the nav is only the strip round the account face
+     at the right, so `left: 50%` measured half of THAT strip and the key
+     slid back in on top of the face, then jumped to the middle when the
+     transform cleared. Both boxes it can resolve against end at the
+     window's right edge, so `right: 50vw` and a half-width nudge put its
+     middle on the window's middle in either case. */
   .nav-portfolios {
     position: fixed;
     top: calc((var(--header-h) - 30px) / 2);
-    left: 50%;
-    translate: -50% 0;
+    right: 50vw;
+    translate: 50% 0;
     z-index: 1;
     display: none;
     align-items: center;
@@ -1047,7 +1078,9 @@ import "../styles/type.css";
     padding: 0 14px 0 9px;
     border-radius: var(--radius-pill) !important;
     box-shadow: inset 0 0 0 1px var(--color-border);
-    background: var(--nav-paper);
+    background: var(--glass-paper);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
     color: var(--nav-ink);
     text-decoration: none;
     pointer-events: auto;

@@ -20,6 +20,7 @@ import {
   orderProjects,
   previewProjects,
   projectLabel,
+  workPlace,
   projectRecordKey,
   projectsToWrite,
   sameIds,
@@ -269,4 +270,24 @@ test("Save writes only new projects and projects whose stored document would cha
   assert.deepEqual(projectsToWrite([a, fresh], stored, committed).map((p) => p.projectId), ["c"]);
   // Stored but never keyed (written before this tab knew it): written.
   assert.deepEqual(projectsToWrite([fresh], new Set(["c"]), committed).map((p) => p.projectId), ["c"]);
+});
+
+test("workPlace: a refused work is named by its place in its project, not the account", () => {
+  const s = {
+    "profile.gallery.saveFailed": "image {n}",
+    "profile.gallery.saveFailedIn": "work {n} in “{project}”",
+    "profile.project.untitled": "Project {n}",
+  };
+  const gallery = [
+    { imageId: "a", projectId: "p" },
+    { imageId: "b", projectId: "q" },
+    { imageId: "c", projectId: "q" },
+    { imageId: "d" },
+  ];
+  const projects = [{ projectId: "p", title: "Ribosome" }, { projectId: "q", title: "Glacier", titleDe: "Gletscher" }];
+  assert.equal(workPlace(gallery, projects, "c", "en", s), "work 2 in “Glacier”");
+  assert.equal(workPlace(gallery, projects, "c", "de", s), "work 2 in “Gletscher”");
+  assert.equal(workPlace(gallery, projects, "a", "en", s), "work 1 in “Ribosome”");
+  // No project, or one this editor does not know: the account-wide wording.
+  assert.equal(workPlace(gallery, projects, "d", "en", s), "image 4");
 });

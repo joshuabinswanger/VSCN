@@ -49,8 +49,9 @@ export function followContentSize(bar: HTMLElement, inner: HTMLElement): () => v
  * A PANEL THAT FOLDS UP AND DOWN (2026-10-29): the handle is the phone
  * panel's top edge, and a drag on it folds the panel the way it went —
  * down folds, up unfolds — with the click that follows the drag swallowed.
- * SAVE STAYS (2026-11-02): folded, the panel still shows Save; only the
- * switches fold away, and off the Works tab the handle is not drawn.
+ * SAVE FOLDS TOO (2026-11-04, reversing 11-02's "Save stays"): folded, the
+ * panel is the handle alone. Off the Works tab the handle is not drawn and
+ * Save shows whatever the fold says (profile-editor.css).
  */
 export function bindBarFold(handle: HTMLButtonElement, bar: HTMLElement, signal: AbortSignal): void {
   const apply = (folded: boolean) => {

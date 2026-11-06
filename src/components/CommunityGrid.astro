@@ -120,6 +120,25 @@ const tagsAttr = (m: MemberView) => {
   return keys.length ? `|${keys.join("|")}|` : "";
 };
 
+// WHO A MEMBER IS, for the Scientists / Visual creators switch at the top of
+// the Tags card (2026-11-04, Josh: "add a filter for filtering just for
+// scientist or just for visual creators"). Same pipe encoding as data-tags.
+// "Both" answers to either; a research group counts as science; a member who
+// never picked a type counts as a visual creator, the directory's original
+// audience. Stamped on every cell and row, the wall's tiles carrying their
+// MAKER's — the switch is about people, not pictures.
+const whoAttr = (m: MemberView) => {
+  switch (m.memberType) {
+    case "scientist":
+    case "organization":
+      return "|sci|";
+    case "both":
+      return "|sci|vis|";
+    default:
+      return "|vis|";
+  }
+};
+
 // THE WALL'S OWN VERSION OF tagsAttr — what is IN the picture, not who made
 // it (2026-09-08). Only the wall's tiles use this; the spread's cards and the
 // ledger's rows keep tagsAttr(member) above, unchanged.
@@ -490,6 +509,11 @@ const searchIndex: SearchIndex = {
           <button type="button" class="bar-card__handle" aria-label={t("community.bar.fold")} title={t("community.bar.fold")}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
           </button>
+          <div class="seg who-filter" role="group" aria-label={t("community.filter.who")}>
+            <button type="button" data-who="" aria-pressed="true">{t("community.filter.who.all")}</button>
+            <button type="button" data-who="sci" aria-pressed="false">{t("community.filter.who.sci")}</button>
+            <button type="button" data-who="vis" aria-pressed="false">{t("community.filter.who.vis")}</button>
+          </div>
           <div class="tag-filter__head">
             <input
               id="tag-filter-search"
@@ -766,8 +790,31 @@ const searchIndex: SearchIndex = {
         where the bar stands in the header. Outside .community-bar__in so the
         island's clip cannot cut it; reflectTagUI fills it, a tap on the name
         opens the Tags card. The × beside it drops the tag (same day, Josh:
-        "make it deleteable with an X button next to it"). */
+        "make it deleteable with an X button next to it"). TWO CHIPS since
+        2026-11-04 (Josh: "the tag chips should be separated … one for the
+        people and one for the field"): the who chip and the tag chip side by
+        side in one anchored row, each with its own ×. */
     }
+    <div class="filter-floats">
+    <span id="who-float" class="tagchip tag-float" hidden>
+      <button
+        type="button"
+        id="who-float-name"
+        class="tag-float__name"
+        aria-controls="tag-filter-panel"
+      ></button>
+      <button
+        type="button"
+        id="who-float-x"
+        class="tag-float__x"
+        aria-label={t("community.filter.who.all")}
+      >
+        <svg viewBox="0 0 10 10" aria-hidden="true"
+          ><path d="M2 2l6 6M8 2l-6 6" fill="none" stroke="currentColor" stroke-width="1.4"
+          ></path></svg
+        >
+      </button>
+    </span>
     <span id="tag-float" class="tagchip tag-float" hidden>
       <button
         type="button"
@@ -787,6 +834,7 @@ const searchIndex: SearchIndex = {
         >
       </button>
     </span>
+    </div>
   </div>
 
   {
@@ -851,6 +899,7 @@ const searchIndex: SearchIndex = {
           data-rank={i}
           data-score={bestScore(member)}
           data-tags={tagsAttr(member)}
+          data-who={whoAttr(member)}
           data-name={member.displayName}
         >
           <CommunityImageCard member={member} lang={lang} index={i} />
@@ -877,6 +926,7 @@ const searchIndex: SearchIndex = {
           data-rank={i}
           data-score={work.score}
           data-tags={workTagsAttr(work)}
+          data-who={whoAttr(member)}
           data-work={key}
           data-row="0"
           data-col="0-0"
@@ -907,7 +957,7 @@ const searchIndex: SearchIndex = {
   }
   <script
     is:inline
-    set:html={`(function(){try{${shuffleBands.toString()};${dealPagesInto.toString()};var g=document.getElementById("member-grid");if(g&&!matchMedia("(prefers-reduced-motion: reduce)").matches)g.dataset.motion="";if(!g||g.dataset.dealt)return;var p=new URLSearchParams(location.search);var v=p.get("pattern");if(v&&v!=="pages"&&v!=="spread"&&v!=="strip")return;var t=p.get("tag")||"";if(t&&!document.querySelector('.tag-filter__option[data-tag="'+CSS.escape(t)+'"]'))t="";var s=0;try{var i=history.state&&history.state.index;if(typeof i==="number")s=Number(sessionStorage.getItem("vscn:deal:"+i))||0}catch(e){}if(!s)s=(Math.floor(Math.random()*4294967295)||1)>>>0;window.__vscnDeal=s;dealPagesInto(g,s,t)}catch(e){}})()`}
+    set:html={`(function(){try{${shuffleBands.toString()};${dealPagesInto.toString()};var g=document.getElementById("member-grid");if(g&&!matchMedia("(prefers-reduced-motion: reduce)").matches)g.dataset.motion="";if(!g||g.dataset.dealt)return;var p=new URLSearchParams(location.search);var v=p.get("pattern");if(v&&v!=="pages"&&v!=="spread"&&v!=="strip")return;var t=p.get("tag")||"";var w=p.get("who");if(w!=="sci"&&w!=="vis")w="";if(t&&!document.querySelector('.tag-filter__option[data-tag="'+CSS.escape(t)+'"]'))t="";var s=0;try{var i=history.state&&history.state.index;if(typeof i==="number")s=Number(sessionStorage.getItem("vscn:deal:"+i))||0}catch(e){}if(!s)s=(Math.floor(Math.random()*4294967295)||1)>>>0;window.__vscnDeal=s;dealPagesInto(g,s,t,w)}catch(e){}})()`}
   />
 
   {
@@ -964,7 +1014,7 @@ const searchIndex: SearchIndex = {
             <ProfileLink lang={lang} href={memberHref(lang, m.slug)} />
           );
           return (
-            <li class="cindex__row" data-tags={tagsAttr(m)}>
+            <li class="cindex__row" data-tags={tagsAttr(m)} data-who={whoAttr(m)}>
               <div class="cindex__line">
                 {/* THE LINE IS THE TOGGLE (2026-09-01, Josh: "in index
                     clicking on the profile expands it"). It used to be a link
@@ -1159,7 +1209,8 @@ const searchIndex: SearchIndex = {
        capsule, inset by --bar-pad. Padding plus border is what the panels'
        offsets add. */
     padding: var(--bar-pad);
-    background: var(--color-bg);
+    /* No ground of its own: the glass is on the triggers it holds. */
+    background: none;
     border: 1px solid var(--color-dark);
     font-size: var(--fs-85);
     /* The pill never outgrows the screen; past this a label wraps inside it. */
@@ -1225,11 +1276,26 @@ const searchIndex: SearchIndex = {
       right: 0;
       bottom: 0;
       z-index: -1;
-      height: calc(var(--bar-h, 38px) + 60px + env(safe-area-inset-bottom, 0px));
+      /* AS SMOOTH AS COSMOS' (2026-11-04, Josh's screenshot of its feed):
+         taller, never quite opaque at the foot, and EASED — a scrim curve
+         in thirteen stops instead of two straight ramps, whose kinks read
+         as a line across the pictures. The alphas follow the classic
+         easing-gradient table, scaled to 0.94 at the foot. */
+      height: calc(var(--bar-h, 38px) + 110px + env(safe-area-inset-bottom, 0px));
       background: linear-gradient(
         to top,
-        var(--color-bg) 0%,
-        color-mix(in srgb, var(--color-bg) 85%, transparent) 35%,
+        color-mix(in srgb, var(--color-bg) 94%, transparent) 0%,
+        color-mix(in srgb, var(--color-bg) 69.4%, transparent) 19%,
+        color-mix(in srgb, var(--color-bg) 50.9%, transparent) 34%,
+        color-mix(in srgb, var(--color-bg) 35.9%, transparent) 47%,
+        color-mix(in srgb, var(--color-bg) 26.1%, transparent) 56.5%,
+        color-mix(in srgb, var(--color-bg) 18.2%, transparent) 65%,
+        color-mix(in srgb, var(--color-bg) 11.8%, transparent) 73%,
+        color-mix(in srgb, var(--color-bg) 7.1%, transparent) 80.2%,
+        color-mix(in srgb, var(--color-bg) 3.9%, transparent) 86.1%,
+        color-mix(in srgb, var(--color-bg) 2%, transparent) 91%,
+        color-mix(in srgb, var(--color-bg) 0.8%, transparent) 95.2%,
+        color-mix(in srgb, var(--color-bg) 0.2%, transparent) 98.2%,
         transparent 100%
       );
       pointer-events: none;
@@ -1262,7 +1328,9 @@ const searchIndex: SearchIndex = {
        persistent"): each trigger is a segment of the pill at rest, not a
        word that only gets a ground when it is pointed at. Open, or holding
        a tag, it is black. */
-    background: var(--color-bg);
+    background: var(--glass-paper);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
     font: inherit;
     color: var(--color-dark);
     cursor: pointer;
@@ -1705,6 +1773,17 @@ const searchIndex: SearchIndex = {
     @media (--bp-desktop) {
       margin-bottom: 18px;
     }
+  }
+
+  /* The who switch: centred atop the Tags card, above the field. */
+  .who-filter {
+    display: flex;
+    margin: 0 auto 10px;
+    max-width: 100%;
+  }
+
+  .who-filter > button {
+    flex: 1 1 auto;
   }
 
   .filter-empty {
@@ -3241,7 +3320,9 @@ const searchIndex: SearchIndex = {
       gap: 0;
       border: 1px solid var(--color-border);
       border-radius: var(--radius-pill);
-      background: var(--color-bg);
+      background: var(--glass-paper);
+      -webkit-backdrop-filter: var(--glass-blur);
+      backdrop-filter: var(--glass-blur);
     }
     .view-seg {
       position: relative;
@@ -3381,7 +3462,9 @@ const searchIndex: SearchIndex = {
       pointer-events: auto;
       border: 1px solid var(--color-border);
       border-radius: 22px !important;
-      background: var(--color-bg);
+      background: var(--glass-paper);
+      -webkit-backdrop-filter: var(--glass-blur);
+      backdrop-filter: var(--glass-blur);
       box-shadow: 0 -6px 30px rgb(0 0 0 / 0.1);
     }
     .community-bar .bar-menu__panel[hidden] {
@@ -3393,7 +3476,8 @@ const searchIndex: SearchIndex = {
        behind the keyboard and the home bar, and their height is padding,
        so the last row still ends above them. */
     .community-bar .tag-filter__panel,
-    .community-bar .sort-menu__panel {
+    .community-bar .sort-menu__panel,
+    .community-bar .search__panel {
       --sheet-foot: max(env(safe-area-inset-bottom, 0px), var(--bar-kb, 0px));
       position: fixed;
       left: 0;
@@ -3411,7 +3495,7 @@ const searchIndex: SearchIndex = {
     .community-bar .search__panel {
       display: flex;
       flex-direction: column;
-      height: var(--card-max);
+      height: calc(var(--card-max) + var(--sheet-foot));
       overflow: hidden;
     }
     .community-bar .search__head {
@@ -3426,37 +3510,41 @@ const searchIndex: SearchIndex = {
       overflow-y: auto;
       overscroll-behavior: contain;
     }
-    /* THE SEARCH FILLS THE SCREEN (2026-10-29, Josh: "please make search
-       full screen on mobile"). Its card covers the whole visible screen,
-       header included, from the top edge down to the keyboard (or the
-       screen's foot); it still grows out of its pill and folds back by the
-       handle. Tags and Sort stay cards over the bar. The bar climbs over
-       the header (z 20 → 40) while it is open. */
+    /* THE SEARCH FILLS THE SCREEN, ITS FIELD AT THE FOOT (2026-11-04,
+       Josh: "the bar stays where the search button is at first. It just
+       expands in a smooth animation, and then we need a full screen search
+       panel ... the drop down button ... either at the very top or just
+       above the search bar"). The card grows out of the search pill
+       (growFromPill) to cover the screen from the top edge to the bottom;
+       the field stays down where the pill was, standing on the keyboard
+       (its height is padding), the results fill the screen above it and
+       the fold handle sits at the very top. Order only: the markup keeps
+       handle, field, results, so a screen reader still meets the field
+       first. Earlier: full screen with the field at the top (10-29), then
+       the tags' half sheet (11-04 morning, "stay at the bottom"). */
     .community-bar:has(#search-panel:not([hidden])) {
       z-index: 40;
     }
-    /* TO THE SCREEN'S FOOT, BEHIND THE KEYBOARD (2026-10-29, Josh: "the
-       search bar does not cover the full screen we can still see the site
-       behind it"). The paper stopped at the keyboard's top (--bar-kb), and
-       the iOS keyboard is see-through and floats its suggestion bar above
-       itself, so the People list showed in the strip between them and
-       through the keys. The paper now runs to the bottom; the keyboard's
-       height is padding, so the results still end above it. */
     .community-bar .search__panel {
-      position: fixed;
       top: var(--bar-vtop, 0px);
       bottom: 0;
-      left: 0;
-      right: 0;
-      translate: none;
-      width: auto;
       height: auto;
       max-height: none;
-      padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px
-        calc(var(--bar-kb, 0px) + env(safe-area-inset-bottom, 0px) + 12px);
+      padding: calc(env(safe-area-inset-top, 0px) + 6px) 12px
+        calc(var(--sheet-foot) + 12px);
       border: 0;
       border-radius: 0 !important;
       box-shadow: none;
+    }
+    .community-bar .search__panel > .bar-card__handle {
+      order: 0;
+    }
+    .community-bar .search__results {
+      order: 1;
+    }
+    .community-bar .search__head {
+      order: 2;
+      margin: 8px 0 0;
     }
     /* The tags' card the same way: the handle and the field stand, the
        chips scroll under them. */
@@ -3465,6 +3553,7 @@ const searchIndex: SearchIndex = {
       flex-direction: column;
       overflow: hidden;
     }
+    .community-bar .who-filter,
     .community-bar .tag-filter__head,
     .community-bar .tag-filter__scope {
       flex: none;
@@ -3578,7 +3667,9 @@ const searchIndex: SearchIndex = {
       pointer-events: auto;
       border: 1px solid var(--color-border);
       border-radius: calc(var(--bar-h) / 2 + var(--card-rim)) !important;
-      background: var(--color-bg);
+      background: var(--glass-paper);
+      -webkit-backdrop-filter: var(--glass-blur);
+      backdrop-filter: var(--glass-blur);
       box-shadow: 0 10px 30px rgb(0 0 0 / 0.1);
       /* It grows out of its pill instead (growFromPill in the controller). */
       animation: none;
@@ -3643,13 +3734,24 @@ const searchIndex: SearchIndex = {
   .view-seg {
     anchor-name: --tag-views;
   }
-  .tag-float {
+  .filter-floats {
     position: absolute;
     left: 50%;
     bottom: calc(100% + 8px);
     translate: -50% 0;
+    display: flex;
+    gap: 6px;
+    width: max-content;
+    max-width: calc(100vw - 32px);
+    pointer-events: none;
+    transition:
+      opacity 160ms ease,
+      visibility 0s linear 0s;
+  }
+  .tag-float {
     pointer-events: auto;
-    max-width: min(16rem, calc(100vw - 32px));
+    min-width: 0;
+    max-width: 16rem;
     min-height: 24px;
     padding: 0 4px 0 10px;
     display: flex;
@@ -3660,15 +3762,14 @@ const searchIndex: SearchIndex = {
     background: var(--color-dark) !important;
     color: var(--color-bg) !important;
     border-color: var(--color-dark);
-    transition:
-      opacity 160ms ease,
-      visibility 0s linear 0s;
   }
-  .community-bar:has(.sort-menu:not([hidden])) .tag-float {
-    translate: calc(-50% - (var(--bar-h) + var(--bar-gap, 6px)) / 2) 0;
+  @supports not (position-anchor: --a) {
+    .community-bar:has(.sort-menu:not([hidden])) .filter-floats {
+      translate: calc(-50% - (var(--bar-h) + var(--bar-gap, 6px)) / 2) 0;
+    }
   }
   @supports (position-anchor: --a) {
-    .community-bar .tag-float {
+    .filter-floats {
       position-anchor: --tag-views;
       left: anchor(center);
       bottom: calc(anchor(top) + 8px);
@@ -3689,7 +3790,10 @@ const searchIndex: SearchIndex = {
   }
   .tag-float__name {
     min-width: 0;
-    padding: 0;
+    /* 1px each side: the overflow clip below otherwise shaves the first
+       capital's edge (the chip's left padding gives that pixel back). */
+    padding: 0 1px;
+    margin-left: -1px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -3712,7 +3816,7 @@ const searchIndex: SearchIndex = {
   .tag-float__x:focus-visible {
     background: color-mix(in srgb, var(--color-bg) 22%, transparent);
   }
-  .community-bar:has(.community-bar__panels > :not([hidden])) .tag-float {
+  .community-bar:has(.community-bar__panels > :not([hidden])) .filter-floats {
     opacity: 0;
     visibility: hidden;
     transition:
@@ -3720,12 +3824,12 @@ const searchIndex: SearchIndex = {
       visibility 0s linear 120ms;
   }
   @media (--bp-desktop) {
-    .tag-float {
+    .filter-floats {
       bottom: auto;
       top: calc(100% + 8px);
     }
     @supports (position-anchor: --a) {
-      .tag-float {
+      .filter-floats {
         top: calc(anchor(bottom) + 8px);
       }
     }

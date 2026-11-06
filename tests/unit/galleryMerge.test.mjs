@@ -45,6 +45,31 @@ test("a stored value that is not an id list is ignored: ours stands", () => {
   assert.deepEqual(mergeGalleryIds(["a"], ["a"], [{ imageId: "legacy" }]).merged, ["a"]);
 });
 
+test("an order arranged elsewhere survives a tab that did not reorder", () => {
+  const m = mergeGalleryIds(["a", "b", "c"], ["a", "b", "c"], ["c", "a", "b"]);
+  assert.deepEqual(m, { merged: ["c", "a", "b"], added: [], dropped: [] });
+});
+
+test("a work this tab uploaded keeps its place after the work it followed", () => {
+  const m = mergeGalleryIds(["a", "b", "c"], ["a", "b", "n", "c"], ["c", "a", "b"]);
+  assert.deepEqual(m.merged, ["c", "a", "b", "n"]);
+});
+
+test("a work this tab put first stays first under the stored order", () => {
+  const m = mergeGalleryIds(["a", "b"], ["n", "a", "b"], ["b", "a"]);
+  assert.deepEqual(m.merged, ["n", "b", "a"]);
+});
+
+test("a tab that reordered itself still wins over a stored order", () => {
+  const m = mergeGalleryIds(["a", "b", "c"], ["b", "a", "c"], ["c", "a", "b"]);
+  assert.deepEqual(m.merged, ["b", "a", "c"]);
+});
+
+test("a removal here and a reorder elsewhere both hold", () => {
+  const m = mergeGalleryIds(["a", "b", "c"], ["a", "c"], ["c", "b", "a"]);
+  assert.deepEqual(m.merged, ["c", "a"]);
+});
+
 test("duplicates in the stored array are appended once", () => {
   const m = mergeGalleryIds([], [], ["y", "y"]);
   assert.deepEqual(m.merged, ["y"]);

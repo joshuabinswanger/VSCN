@@ -813,6 +813,39 @@
     display: none;
   }
 
+  /* EDIT PROFILE under the person (2026-11-04): the light 30px pill of the
+     header's LOGIN key, shown in Edit mode only. The head is a rendering,
+     not a form, so this is the way from it to its fields. */
+  .ppv-edit-profile {
+    display: none;
+  }
+  .works-stage[data-mode="edit"] .ppv-edit-profile {
+    display: inline-flex;
+    align-items: center;
+    justify-self: start;
+    align-self: start;
+    box-sizing: border-box;
+    height: 30px;
+    margin-top: 1rem;
+    padding: 9px 14px 8px;
+    border: 0;
+    border-radius: var(--radius-pill) !important;
+    background: var(--color-bg);
+    color: var(--color-dark);
+    box-shadow: inset 0 0 0 1px var(--color-border);
+    font-family: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease;
+  }
+  .works-stage[data-mode="edit"] .ppv-edit-profile:hover {
+    box-shadow: inset 0 0 0 1px var(--color-dark);
+  }
+  .works-stage[data-mode="edit"] .ppv-edit-profile:focus-visible {
+    outline: 1.5px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
   .works-view[hidden] {
     display: none;
   }
@@ -963,11 +996,17 @@
     color: var(--color-muted);
   }
 
+  /* ONE ROW (2026-11-04, Josh: "the buttons wraps cant we make the stay
+     on one row?"). Never wraps on a phone, where the keys and gaps tighten
+     so S L, the arrows and Replace / Move / Remove fit a 390px screen. A
+     desktop splits it in two (see TWO ROWS below). */
   .gallery-boxhead__keys {
     display: flex;
     flex: 1 1 100%;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 10px;
+    min-width: 0;
   }
 
   .gallery-boxhead__word {
@@ -989,20 +1028,111 @@
     padding: 0 10px;
   }
 
+  /* THE WORD KEYS ARE KEYS (2026-11-04, Josh: "the buttons should have
+     borders as well"): Replace, Move, Remove and Dissolve wear the arrows'
+     box (.gallery-key: 30px, the hairline, paper), the danger word keeps its
+     red type. Until then they were bare words. */
   .gallery-boxhead__word {
-    padding: 4px 2px;
-    border: 0;
-    background: none;
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-key) !important;
+    background: var(--color-bg);
     color: var(--color-error);
     font-family: inherit;
     font-size: var(--fs-74);
     font-weight: 400;
     letter-spacing: 0;
+    white-space: nowrap;
     cursor: pointer;
+    transition: border-color 0.15s;
   }
 
   .gallery-boxhead__word:hover:not(:disabled) {
-    text-decoration: underline;
+    border-color: var(--color-dark);
+  }
+
+  .gallery-boxhead__word--replace {
+    color: var(--color-dark);
+  }
+  .gallery-boxhead__word--replace + .gallery-boxhead__word {
+    margin-left: 0;
+  }
+
+  /* MOVE beside Remove (2026-11-04): the same word key in the ink colour;
+     it takes the push to the right and Remove follows it at the row's gap. */
+  .gallery-boxhead__word--move {
+    color: var(--color-dark);
+  }
+  .gallery-boxhead__word--move[hidden] {
+    display: none;
+  }
+  .gallery-boxhead__word--move:not([hidden]) + .gallery-boxhead__word {
+    margin-left: 0;
+  }
+
+  /* TWO ROWS ON A DESKTOP (2026-11-04, Josh: "buttons overflow on desktop
+     … move and remove can be a second row. remove aligned right"). The side
+     card is too narrow for S L, the arrows, Replace, Move and Remove in one
+     line. A zero-height flex break (::after, order 1) sends Move and the red
+     word (order 2) under the rest: Move from the left, the red word at the
+     right, Replace at the right of the row above. Only rows with size or arrow keys (:has(grp)); a text block's
+     lone Remove stays as it was. The phone keeps its single tight row. */
+  @media (--bp-desktop) {
+    .gallery-boxhead__keys:has(> .gallery-boxhead__grp) {
+      flex-wrap: wrap;
+      /* the break is a line of its own: two half gaps = the row's 10px */
+      row-gap: 5px;
+    }
+    .gallery-boxhead__keys:has(> .gallery-boxhead__grp)::after {
+      content: "";
+      flex-basis: 100%;
+      height: 0;
+      order: 1;
+    }
+    /* Replace at the right of the first row, over the red key (Josh:
+       "align replace to the right aswell"). */
+    .gallery-boxhead__keys:has(> .gallery-boxhead__grp) > .gallery-boxhead__word--replace {
+      margin-left: auto;
+    }
+    .gallery-boxhead__keys:has(> .gallery-boxhead__grp) > :is(.gallery-boxhead__word--move, .gallery-boxhead__word--danger) {
+      order: 2;
+    }
+    .gallery-boxhead__keys:has(> .gallery-boxhead__grp) > .gallery-boxhead__word--move {
+      margin-left: 0;
+    }
+    .gallery-boxhead__keys:has(> .gallery-boxhead__grp) > .gallery-boxhead__word--danger {
+      margin-left: auto;
+    }
+  }
+
+  /* The phone's tighter row (see .gallery-boxhead__keys): after the base
+     rules so it wins at the same specificity. */
+  @media (--bp-mobile) {
+    .gallery-boxhead__keys {
+      gap: 5px;
+    }
+    .gallery-boxhead .gallery-key {
+      min-width: 28px;
+      height: 28px;
+      padding: 0 7px;
+    }
+    .gallery-boxhead__word {
+      height: 28px;
+      padding: 0 8px;
+    }
+  }
+
+  /* The project and carousel selects are the Move key's engine now and are
+     never drawn (moveMenu.ts); a carousel's tools held only its select. */
+  [data-gallery-project-wrap],
+  [data-gallery-carousel-wrap],
+  [data-carousel-project-wrap],
+  .gallery-carousel-tools {
+    display: none !important;
   }
 
   .gallery-boxhead__word:disabled {
@@ -2127,13 +2257,24 @@
   .ebar {
     box-sizing: content-box;
     padding: 6px;
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
+    /* NO PANEL BEHIND THE CONTROLS (2026-11-04, Josh: "instead of it being
+       applied to the pill behind the ui element it should be on the ui
+       elements itself"). The bar is only a box that sizes and folds; each
+       switch is its own glass pill (below) and Save keeps its black. */
+    background: none;
+    border: 0;
     border-radius: 24px !important;
-    box-shadow:
-      0 8px 28px rgb(0 0 0 / 0.1),
-      0 1px 3px rgb(0 0 0 / 0.06);
+    box-shadow: none;
     overflow: hidden;
+  }
+
+  .ebar .seg {
+    background: var(--glass-paper);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    box-shadow:
+      inset 0 0 0 1px var(--color-border),
+      0 1px 4px rgb(0 0 0 / 0.08);
   }
 
   .ebar.is-sized {
@@ -2187,14 +2328,17 @@
   /* THE ACTIONS: 36px pills sharing the row equally, icon and word (44px on
      2026-10-23 for a day: "a bit more compact"). Save, and + Project until
      it moved under the project cards (2026-10-29). */
+  /* Only as wide as its icon and word, centred in its row (2026-11-04, Josh:
+     "make the save button less wide! more inline with the rest of our
+     buttons"); it stretched across the whole row before. */
   .ebar .profile-save-button {
     display: inline-flex;
-    flex: 1 1 0;
+    flex: none;
     align-items: center;
     justify-content: center;
-    gap: 7px;
-    min-width: 7rem;
-    height: 36px;
+    gap: 6px;
+    min-width: 0;
+    height: 32px;
     min-height: 0;
     padding: 0 16px;
     font: inherit;
@@ -2231,15 +2375,37 @@
       width: auto !important;
       padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px));
       border: 0;
-      border-top: 1px solid var(--color-border);
-      border-radius: 20px 20px 0 0 !important;
-      box-shadow: 0 -6px 24px rgb(0 0 0 / 0.08);
+      border-radius: 0 !important;
+      /* NO PANEL (2026-11-04, Josh, the same afternoon he asked for a
+         frosted one: "the work editor doesnt need the backdrop for the
+         buttons just the drop up button and the other 3 buttons should be
+         in a bigger pill, save separately"). The bar paints nothing; the
+         handle, the switches' pill and Save are the three objects. */
+      background: none;
+      box-shadow: none;
     }
 
     .ebar__in,
     .ebar.is-folded .ebar__in {
       width: 100%;
       max-width: none;
+    }
+
+    /* AWAY WHILE TYPING (2026-11-04, Josh's iPhone screenshot: the bar
+       floating mid-screen over the description he was typing in). iOS lays
+       the keyboard over the page and pans it, and a fixed bar stays put
+       against a layout viewport that is now half under the keys, so it lands
+       on the very field in use. While a text field has focus the bar fades
+       out and takes no taps; autosave keeps saving, and it is back the
+       moment the keyboard goes. */
+    .ebar {
+      transition: opacity 0.18s ease, visibility 0s linear 0s;
+    }
+    &:has(:is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="button"], [type="submit"]), textarea, select, [contenteditable="true"]):focus) .ebar {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.12s ease, visibility 0s linear 0.12s;
     }
 
     .ebar .seg {
@@ -2289,11 +2455,13 @@
       outline-offset: 2px;
     }
 
-    /* Folded: the handle, pointing up, over Save alone; the measured size
-       shrinks the bar round it. Save never folds away (2026-11-02, Josh:
-       "the save button should always be there on mobile"): only Edit |
-       Preview and the switches' row go. */
-    .ebar.is-folded :is(.ebar__mode, .ebar__group) {
+    /* Folded: the handle alone, pointing up; the measured size shrinks the
+       panel round it. SAVE FOLDS AWAY TOO (2026-11-04, Josh: "on mobile
+       the save button should disappear too on collapse"), reversing
+       2026-11-02's "always there": autosave keeps saving. Only on the
+       Works tab, where the handle is drawn; off it Save is the whole bar
+       and nothing folds, even if the fold was left closed on Works. */
+    .profile-form.is-works .ebar.is-folded .ebar__rows {
       display: none;
     }
 
@@ -2307,6 +2475,27 @@
     .ebar__group {
       order: -1;
       flex-wrap: nowrap;
+    }
+    /* ONE BIGGER PILL ROUND THE THREE (2026-11-04, Josh: "the other 3
+       buttons should be in a bigger pill, save separately"): the glass is on
+       the row, and the switches inside it are bare tracks, so it reads as one
+       control with three toggles in it. Save stays its own black pill below. */
+    .ebar .ebar__group {
+      gap: 4px;
+      padding: 3px;
+      border-radius: 999px !important;
+      background: var(--glass-paper);
+      -webkit-backdrop-filter: var(--glass-blur);
+      backdrop-filter: var(--glass-blur);
+      box-shadow:
+        inset 0 0 0 1px var(--color-border),
+        0 1px 4px rgb(0 0 0 / 0.08);
+    }
+    .ebar .ebar__group .seg {
+      background: none;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      box-shadow: none;
     }
     .ebar .ebar__group .ebar__mode {
       flex: 1 1 auto;
@@ -3237,6 +3426,19 @@
 
   .ebar__mode:has([data-works-mode="preview"][aria-pressed="true"]) .ebar__mode-thumb {
     transform: translateX(calc(100% + 2px));
+  }
+
+  /* OVER THE CARD (2026-11-04, Josh: "they should stay in place"): the
+     switch keeps its place and size, faded and out of reach, so the bar
+     never resizes on Profile | Card and nothing beside it moves. */
+  .ebar .ebar__mode {
+    transition: opacity 0.25s ease;
+  }
+  .ebar .ebar__mode[data-off] {
+    opacity: 0.35;
+  }
+  .ebar .ebar__mode[data-off] > button {
+    cursor: default;
   }
 
   @media (prefers-reduced-motion: reduce) {

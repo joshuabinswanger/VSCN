@@ -183,6 +183,30 @@ const BRAND_SLOTS: BrandSlot[] = [
     />
     <link rel="icon" type="image/png" href={favicon.src} />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {
+      /* NO ZOOM INTO FIELDS ON iOS (2026-11-04, Josh: "on the iphone 15 when i
+        click in the fields they automatically zoom in"). Safari zooms the page
+        onto any input whose text is under 16px, and the slim fields are ~12px
+        by design. maximum-scale=1 stops that zoom, and since iOS 10 Safari
+        ignores it for pinch-zoom, so the page can still be pinched. Android
+        does NOT ignore it (it would lock pinch-zoom), hence iOS only.
+        ClientRouter replaces a head element that differs from the next page's,
+        so the swap puts the plain tag back: re-apply after every swap. */
+    }
+    <script is:inline>
+      (() => {
+        const ios =
+          /iP(hone|od|ad)/.test(navigator.userAgent) ||
+          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        if (!ios) return;
+        const lock = () => {
+          const m = document.querySelector('meta[name="viewport"]');
+          if (m && !/maximum-scale/.test(m.content)) m.content += ", maximum-scale=1";
+        };
+        lock();
+        document.addEventListener("astro:after-swap", lock);
+      })();
+    </script>
     {/* The paper colour, so the browser's own furniture and any strip of canvas
         it exposes match the page instead of flashing white. See the shell note
         at the top of global.css. */}

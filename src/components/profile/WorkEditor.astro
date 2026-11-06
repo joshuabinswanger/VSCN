@@ -199,6 +199,9 @@ const t = useTranslations(lang);
               <button type="button" class="gallery-key gallery-tbtn" data-gallery-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
               <button type="button" class="gallery-key gallery-tbtn" data-gallery-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
             </div>
+            {/* Replace in the key row (2026-11-04, Josh: "the replace button should be in the top row as well"); it sat on the picture's corner until then. */}
+            <button type="button" class="gallery-boxhead__word gallery-boxhead__word--replace" data-gallery-replace>{t("profile.deck.replace")}</button>
+            <button type="button" class="gallery-boxhead__word gallery-boxhead__word--move" data-gallery-moveto hidden>{t("profile.deck.move")}</button>
             <button type="button" class="gallery-boxhead__word gallery-boxhead__word--danger" data-gallery-remove>{t("profile.deck.remove")}</button>
           </div>
         </div>
@@ -209,7 +212,6 @@ const t = useTranslations(lang);
         }
         <div class="mprof__work-link gallery-thumb">
           <img class="mprof__img" alt="" loading="lazy" data-gallery-img />
-          <button type="button" class="gallery-thumb-replace" data-gallery-replace>{t("profile.deck.replace")}</button>
           <div class="gallery-thumb-labels">
             <span class="gallery-cover" data-gallery-cover hidden></span>
             <span class="gallery-video-badge" data-gallery-video-badge hidden
@@ -411,6 +413,7 @@ const t = useTranslations(lang);
               <button type="button" class="gallery-key gallery-tbtn" data-carousel-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
               <button type="button" class="gallery-key gallery-tbtn" data-carousel-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
             </div>
+            <button type="button" class="gallery-boxhead__word gallery-boxhead__word--move" data-carousel-moveto hidden>{t("profile.deck.move")}</button>
             <button type="button" class="gallery-boxhead__word gallery-boxhead__word--danger" data-carousel-dissolve>{t("profile.deck.dissolve")}</button>
           </div>
         </div>

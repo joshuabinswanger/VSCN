@@ -95,6 +95,12 @@ const t = useTranslations(lang);
         <ul class="mprof__vals mprof__vals--links" data-ppv="links"></ul>
       </div>
     </div>
+
+    {/* EDIT PROFILE (2026-11-04, Josh: "in edit mode the profile can't be
+        edited, so I want a button below the profile ... and then you switch
+        to the profile editing page"). Drawn only in the Work tab's Edit mode
+        (profile-editor.css); it presses the PROFILE tab. */}
+    <button type="button" class="ppv-edit-profile" data-ppv-edit-profile>{t("profile.works.editProfile")}</button>
     </div>
 
     <div class="mprof__works" data-ppv="works" data-index-label={t("member.index")} hidden></div>

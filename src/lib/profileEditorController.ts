@@ -1,4 +1,4 @@
-import { persistWorkMetadata } from "./profilePersistence.ts";
+import { persistWorkMetadata, WorkSaveError } from "./profilePersistence.ts";
 import { confirmDialog } from "./confirmDialog.ts";
 import { bindTabKeys } from "./uiTabs.ts";
 import { watchPublication } from "./publicationStatus.ts";
@@ -9,6 +9,7 @@ import {
   mergeDraftGallery,
   mergeDraftProjects,
   projectSignature,
+  sameWords,
   uncommittedWorks,
   workWords,
   type WorkWords,
@@ -53,6 +54,7 @@ import {
   addVideoLink,
   restoreAutoThumbnail,
   embedErrorCode,
+  saveGalleryRecords,
   type GalleryItem,
 } from "./gallery.ts";
 import {
@@ -61,7 +63,7 @@ import {
   isRetryable,
   type GalleryTask,
 } from "./galleryQueue.ts";
-import { updateUserProfile } from "./firestore.ts";
+import { getStoredUpdatedAt, stampMillis, updateUserProfile } from "./firestore.ts";
 import { legacyArrayIds } from "./galleryRecords.ts";
 import {
   contiguousOrder,
@@ -140,6 +142,7 @@ import {
   MAX_SOCIAL_MEDIA,
 } from "./links.ts";
 import { WORK_SIZE_PX, workSize, workSizeWidth, type WorkSize } from "./workSize.ts";
+import { bindMoveKey } from "./moveMenu.ts";
 import { ui } from "../i18n/translations.ts";
 import {
   isSiteLanguage,
@@ -396,6 +399,26 @@ document.addEventListener("astro:page-load", () => {
   const mustWriteRecords = new Set<string>();
   /** When the loaded profile was last saved (ms) — the draft banner says so when the server copy is the newer one. */
   let loadedUpdatedAt: number | undefined;
+  // A STALE TAB MAY NOT SAVE (2026-11-04, audit finding 26). Every Save
+  // writes the whole profile as this tab holds it, so a tab left open while
+  // another saved put the older text and order back without a word. Each
+  // write of users/{uid} stamps `updatedAt`; this tab knows the stamp it
+  // loaded and every stamp it wrote itself, and a stored stamp it does not
+  // know means somebody else saved since. Save then refuses and asks for a
+  // reload — the draft carries what was typed here across it.
+  const ownStamps = new Set<number>();
+  let profileStale = false;
+  /** A fresh `updatedAt` for a write of this tab's, known before it lands. */
+  function stamp(): Date {
+    const at = new Date();
+    ownStamps.add(at.getTime());
+    return at;
+  }
+  const unknownStamp = (stored: number | undefined) => stored !== undefined && !ownStamps.has(stored);
+  class ProfileStaleError extends Error {}
+  const refuseIfStale = (stored: number | undefined) => {
+    if (unknownStamp(stored)) throw new ProfileStaleError();
+  };
   let previewSlugs = new Map<string, string>();
   // The member type-ahead's options, loaded once on the first Member-mode
   // focus: every visible member's display name, the way the directory
@@ -1116,6 +1139,17 @@ document.addEventListener("astro:page-load", () => {
             });
           }
 
+          // THE MOVE KEY beside Remove (2026-11-04): one menu for both selects
+          // above, which stay as the engine and are no longer drawn.
+          const moveTo = row.querySelector<HTMLButtonElement>("[data-gallery-moveto]");
+          if (moveTo) {
+            moveTo.title = s["profile.deck.move"];
+            bindMoveKey(moveTo, [
+              ...(carouselSelect ? [{ label: s["profile.carousel.select"], select: carouselSelect, wrap: carouselWrap ?? null }] : []),
+              { label: s["profile.project.select"], select: projectSelect, wrap: projectWrap },
+            ]);
+          }
+
           // New picture, same work: captions, description, links, tags and
           // position all stay. Disabled while one is already on its way —
           // see updateGalleryControls, which the queue repaints through.
@@ -1508,9 +1542,10 @@ document.addEventListener("astro:page-load", () => {
           focusHint.control === "thumb"
             ? galleryEditor.querySelector<HTMLElement>(`[data-tray-thumb][data-image-id="${focusHint.imageId}"]`)
             : focusHint.control === "project"
-              ? row?.querySelector<HTMLElement>("[data-gallery-project]")
+              ? (row?.querySelector<HTMLElement>("[data-gallery-moveto]:not([hidden])") ??
+                row?.querySelector<HTMLElement>('[data-gallery-move="up"]'))
               : focusHint.control === "carousel"
-                ? (row?.querySelector<HTMLElement>("[data-gallery-carousel]") ??
+                ? (row?.querySelector<HTMLElement>("[data-gallery-moveto]:not([hidden])") ??
                   galleryEditor.querySelector<HTMLElement>(`[data-tray-thumb][data-image-id="${focusHint.imageId}"]`))
               : focusHint.control === "text"
                   ? row?.querySelector<HTMLElement>(`[data-gallery-field="${worksLang === "de" ? "textAfterDe" : "textAfter"}"]`)
@@ -1519,7 +1554,8 @@ document.addEventListener("astro:page-load", () => {
         const unit = galleryEditor.querySelector<HTMLElement>(`[data-carousel-block][data-carousel-id="${focusHint.carouselId}"]`);
         target =
           focusHint.control === "project"
-            ? unit?.querySelector<HTMLElement>("[data-carousel-project]")
+            ? (unit?.querySelector<HTMLElement>("[data-carousel-moveto]:not([hidden])") ??
+              unit?.querySelector<HTMLElement>('[data-carousel-move="up"]'))
             : focusHint.control === "text"
               ? unit?.querySelector<HTMLElement>(`[data-carousel-field="${worksLang === "de" ? "textAfterDe" : "textAfter"}"]`)
             : focusHint.control === "add"
@@ -1652,6 +1688,8 @@ document.addEventListener("astro:page-load", () => {
    * for each thumbnail.
    */
   const galleryTaskRows = new Map<string, HTMLElement>();
+  /** Failed uploads whose refusal has been said in the bar, by task id. */
+  const failuresSaid = new Set<string>();
 
   function renderQueue() {
     if (!galleryTaskTpl) return;
@@ -1661,6 +1699,7 @@ document.addEventListener("astro:page-load", () => {
       if (live.has(id)) continue;
       row.remove();
       galleryTaskRows.delete(id);
+      failuresSaid.delete(id);
     }
     for (const task of tasks) {
       let row = galleryTaskRows.get(task.id);
@@ -1680,6 +1719,15 @@ document.addEventListener("astro:page-load", () => {
         galleryQueueEl;
       if (row.parentElement !== home) home.appendChild(row);
       paintTaskRow(row, task);
+      // A REFUSAL NOBODY COULD SEE (2026-11-04, upload rate limit in the
+      // re-walk). The row goes into its project's block, and that block is
+      // not drawn while the list of projects is showing, nor is the queue
+      // under it; the "image cap reached" sentence sat there unseen. When
+      // the failed row is not on screen, the bar's line says it once.
+      if (task.state === "error" && !failuresSaid.has(task.id)) {
+        failuresSaid.add(task.id);
+        if (!row.getClientRects().length) showSaveError(`${task.name}: ${s[galleryErrorKey(task.error ?? "unknown")]}`);
+      }
     }
     updateGalleryControls();
   }
@@ -1768,10 +1816,16 @@ document.addEventListener("astro:page-load", () => {
   async function persistGallery() {
     const user = auth.currentUser;
     if (!user) return;
+    // Not refused when stale: the array write is what keeps an upload's
+    // record from being orphaned, and the merge keeps the other tab's order
+    // and membership. But a stamp this tab never saw marks it stale, or this
+    // write's own stamp would let the next Save through.
+    const at = stamp();
     const merge = await updateUserProfile(user.uid, {
       gallery: galleryIds(gallery),
-      updatedAt: new Date(),
-    }, { galleryBase });
+      updatedAt: at,
+    }, { galleryBase, checkStored: (stored) => { if (unknownStamp(stored)) profileStale = true; } });
+    draft?.seen(at.getTime());
     await adoptGalleryMerge(merge, user.uid);
   }
 
@@ -1809,6 +1863,15 @@ document.addEventListener("astro:page-load", () => {
       // A work this tab cannot place in a project it knows goes under
       // "Works", as at load. Its order is stored with the next write.
       homeLoose();
+      renderGallery();
+      syncPreview();
+    }
+    // The merge may have kept an order another tab arranged (galleryMerge.ts,
+    // arrange): show the order that was stored.
+    const rank = new Map(merge.merged.map((id, i) => [id, i]));
+    const ordered = [...gallery].sort((a, b) => (rank.get(a.imageId) ?? Infinity) - (rank.get(b.imageId) ?? Infinity));
+    if (!sameIds(ordered, gallery)) {
+      gallery = normaliseLeads(ordered);
       renderGallery();
       syncPreview();
     }
@@ -1896,6 +1959,25 @@ document.addEventListener("astro:page-load", () => {
     galleryDetailsOpenUI.set(item.imageId, true);
     renderGallery();
     await persistGalleryNow();
+    await fileUploadNow(item.imageId);
+  }
+
+  /**
+   * AN UPLOAD IS FILED AT ONCE (2026-11-04, audit finding 30). Its project
+   * used to reach the record only at Save, so an upload whose Save never
+   * came — the tab was stale and may not save, or the member left — came
+   * back after a reload as a loose work under "Works". Written here when the
+   * project is already stored (a record must never name a project that does
+   * not exist yet); a new block still waits for Save, which writes the
+   * projects first. The carousel is left to Save: a tray can be local.
+   * committedWords keeps the empty project, so Save writes it again, which
+   * is harmless; a refusal here is too, as Save tries once more.
+   */
+  async function fileUploadNow(imageId: string) {
+    const work = gallery.find((g) => g.imageId === imageId);
+    if (!work?.projectId || !storedProjectIds.has(work.projectId)) return;
+    const failures = await saveGalleryRecords([{ ...work, carouselId: undefined }]);
+    failures.forEach((f) => console.warn(`[gallery] ${f.imageId} not filed:`, f.error));
   }
 
   /**
@@ -2201,6 +2283,15 @@ document.addEventListener("astro:page-load", () => {
     renderGallery();
     // The block and its buttons are gone; the way in, if it was the last one.
     (galleryFirst && !galleryFirst.hidden ? galleryFirstProject : document.getElementById("pp-add"))?.focus();
+    // THE SAVE THAT DELETES THE PROJECT, ASKED FOR HERE (audit finding 29,
+    // 2026-11-04). The autosave timer runs on the form's own events, and the
+    // last one was the click on Remove: its 1.5 s ran out while the confirm
+    // dialog was open, found nothing changed, and stood down. The works went
+    // (the gallery write below) and the pill still read "Saved" from that
+    // click, but the project document waited for a Save nothing scheduled,
+    // so the next load showed an empty card of the same name. Scheduled
+    // after the change, the timer also repaints the pill.
+    scheduleAutosave();
     if (removed.length && (await persistGalleryNow())) {
       for (const work of removed) await markImageForDeletion(work.imageId);
     }
@@ -2814,15 +2905,24 @@ document.addEventListener("astro:page-load", () => {
 
   /**
    * What the bar holds right now. Save, always. On the Works tab, the view
-   * and language switches; and, while the PAGE is showing, the mode switch
-   * — the card is drawn from the same fields and is never edited in place,
-   * so it means nothing over it.
+   * and language switches and the mode switch. The card is drawn from the
+   * same fields and is never edited in place, so over it the mode switch
+   * means nothing — but it STAYS, faded and disabled (2026-11-04, Josh:
+   * "when switching from profile to card make the UI buttons not jump …
+   * they should stay in place"). Hiding it shrank the bar and slid Save and
+   * the other switches across under the finger that had just pressed Card.
    */
   function syncBarContents() {
     const onWorks = form.classList.contains("is-works");
     form.querySelectorAll<HTMLElement>("[data-ebar-works]").forEach((el) => {
-      const pageOnly = el.matches("[data-works-mode-seg]");
-      el.hidden = !onWorks || (pageOnly && worksView !== "profile");
+      el.hidden = !onWorks;
+      if (!el.matches("[data-works-mode-seg]")) return;
+      const off = worksView !== "profile";
+      el.toggleAttribute("data-off", off);
+      el.setAttribute("aria-disabled", String(off));
+      el.querySelectorAll<HTMLButtonElement>("button").forEach((btn) => {
+        btn.disabled = off;
+      });
     });
   }
   /**
@@ -2921,6 +3021,8 @@ document.addEventListener("astro:page-load", () => {
     () => {
       syncProfileView();
       refitInline();
+      // An upload's row goes with its project's block: shown when it opens.
+      renderQueue();
     },
     { signal: lifecycle.signal },
   );
@@ -3022,6 +3124,13 @@ document.addEventListener("astro:page-load", () => {
     btn.addEventListener("click", () => {
       switchSection(btn.dataset.section ?? "profile");
     });
+  });
+
+  // EDIT PROFILE under the person in the Work tab's Edit mode (2026-11-04):
+  // the same as pressing the PROFILE tab, so the tab row, the URL and the
+  // phone's swipe order all follow as they do for a tab.
+  document.querySelector<HTMLButtonElement>("[data-ppv-edit-profile]")?.addEventListener("click", () => {
+    document.getElementById("tab-profile")?.click();
   });
 
   // Tags fill the directory card's typographic face as well as the profile
@@ -3303,8 +3412,8 @@ document.addEventListener("astro:page-load", () => {
     const data = await getUser(user.uid);
     if (lifecycle.signal.aborted) return;
     // getUser() hands back raw Firestore data: a Timestamp at runtime, a Date by type.
-    const stamp = data.updatedAt as unknown as Date | { toMillis?: () => number } | undefined;
-    loadedUpdatedAt = stamp instanceof Date ? stamp.getTime() : typeof stamp?.toMillis === "function" ? stamp.toMillis() : undefined;
+    loadedUpdatedAt = stampMillis(data.updatedAt);
+    if (loadedUpdatedAt !== undefined) ownStamps.add(loadedUpdatedAt);
 
     // Sign-in lands here, so this is where a member's stored language takes
     // them to their locale — unless they switched EN / DE on this visit,
@@ -3318,7 +3427,15 @@ document.addEventListener("astro:page-load", () => {
     }
 
     currentPhotoImageId = data.photoImageId ?? "";
-    await ensureEmailSynced(user, data.email);
+    // The sync stamps the profile server-side; that stamp is this load's, not
+    // another tab's, or the first Save would be refused as stale.
+    if (await ensureEmailSynced(user, data.email)) {
+      const synced = await getStoredUpdatedAt(user.uid).catch(() => undefined);
+      if (synced !== undefined) {
+        loadedUpdatedAt = synced;
+        ownStamps.add(synced);
+      }
+    }
     if (lifecycle.signal.aborted) return;
     // Safe to call here: showDeletionBanner and the consts it closes over are declared below, but the auth callback cannot run before this astro:page-load body has finished.
     if (data.status === "pendingDeletion" && data.purgeAfter) {
@@ -3532,6 +3649,22 @@ document.addEventListener("astro:page-load", () => {
     saveError.style.display = "block";
   }
 
+  /** Another tab or device saved since this tab loaded: no Save here until a reload. */
+  function showStale() {
+    showSaveError(s["profile.save.stale"]);
+    const reload = document.createElement("button");
+    reload.type = "button";
+    reload.className = "btn-outline";
+    reload.textContent = s["profile.save.reload"];
+    // dispose() writes the draft and drops the leave prompt; the reloaded
+    // page offers the draft back, as written before the other save.
+    reload.addEventListener("click", () => {
+      draft?.dispose();
+      window.location.reload();
+    });
+    saveError.append(" ", reload);
+  }
+
   /**
    * Where a refused field lives: its control, its tab, and for a bilingual
    * field which of the two panes — the German bio sits behind the EN/DE
@@ -3604,6 +3737,7 @@ document.addEventListener("astro:page-load", () => {
     setSection("work");
     if (worksView !== "profile") setWorksView("profile");
     if (worksMode !== "edit") setWorksMode("edit");
+    openProject(projectId);
     showSaveError(s["profile.project.titleRequired"]);
     const field = galleryEditor.querySelector<HTMLElement>(
       `[data-project-id="${projectId}"] [data-project-field="${worksLang === "de" ? "titleDe" : "title"}"]`,
@@ -3613,6 +3747,53 @@ document.addEventListener("astro:page-load", () => {
     field.focus();
     field.scrollIntoView?.({ block: "center" });
   }
+
+  /** Opens one project as the page (editorProjectPages.ts listens): a field in a set-aside block cannot take the focus. */
+  function openProject(projectId: string) {
+    worksStage?.dispatchEvent(new CustomEvent("works:open", { detail: { projectId } }));
+  }
+
+  /**
+   * A work whose record the server refused (finding 27): its project opened,
+   * the row in Edit, and the field that broke a cap — a value longer than
+   * its own maxlength, which only a paste through devtools or an older tab
+   * gets past — flagged and focused; the title in the bar's language if
+   * none does. Focus used to stay on Save, away from anything to fix.
+   */
+  function showRefusedWork(imageId: string) {
+    const item = gallery.find((g) => g.imageId === imageId);
+    if (!item) return;
+    setSection("work");
+    if (worksView !== "profile") setWorksView("profile");
+    if (worksMode !== "edit") setWorksMode("edit");
+    if (item.projectId) openProject(item.projectId);
+    const row = galleryEditor.querySelector<HTMLElement>(`.gallery-item[data-image-id="${CSS.escape(imageId)}"]`);
+    if (!row) return;
+    const fields = Array.from(row.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("[data-gallery-field]"));
+    const over = fields.find((f) => f.maxLength > 0 && f.value.length > f.maxLength);
+    const field = over ?? row.querySelector<HTMLElement>(`[data-gallery-field="${worksLang === "de" ? "captionDe" : "caption"}"]`);
+    if (!field) return;
+    const pane = field.closest<HTMLElement>("[data-gallery-lang-pane]")?.dataset.galleryLangPane;
+    if ((pane === "de" || pane === "en") && pane !== worksLang) setWorksLang(pane);
+    const fold = field.closest("details");
+    if (fold && !fold.open) fold.open = true;
+    markInvalid(field);
+    field.focus();
+    field.scrollIntoView?.({ block: "center" });
+  }
+
+  /**
+   * A record the server refused, with the words it refused. The autosave
+   * does not send the same words again — the answer would be the same, and
+   * the footer would flash it once per keystroke elsewhere. Any change to
+   * that work's words, or a pressed Save, tries again.
+   */
+  let refusedWork: { imageId: string; words: WorkWords } | null = null;
+  const refusedUnchanged = () => {
+    if (!refusedWork) return false;
+    const item = gallery.find((g) => g.imageId === refusedWork!.imageId);
+    return !!item && sameWords(workWords(item), refusedWork.words);
+  };
 
   /**
    * A save that has not settled in this long has lost the network: Firestore
@@ -3644,6 +3825,8 @@ document.addEventListener("astro:page-load", () => {
     // would say "wait for uploads" or "a title, please", the autosave just
     // stands down; the next event, or the upload landing, schedules it again.
     const quiet = autosaveSubmit;
+    // The refusal stays on screen, unsent again, until those words change.
+    if (quiet && refusedUnchanged()) return;
     saveMsg.style.display = "none";
     saveError.style.display = "none";
     for (const el of [...invalidControls]) unmarkInvalid(el);
@@ -3726,9 +3909,17 @@ document.addEventListener("astro:page-load", () => {
       refocus();
       return;
     }
+    // Said even by an autosave: typing on in a tab that can no longer save
+    // is the loss this guards against.
+    if (profileStale) {
+      showStale();
+      return;
+    }
 
     const generation = ++saveGeneration;
     let timedOut = false;
+    /** The work a refused record write takes the focus to, once the editor is live again. */
+    let takeTo: string | null = null;
     editedDuringSave = false;
     setSaving(true);
     const watchdog = setTimeout(() => {
@@ -3752,6 +3943,10 @@ document.addEventListener("astro:page-load", () => {
       const savedLanguage = preferredLanguageInput.value === "en" ? "en" : "de";
       const shouldSaveCommunityEmailPreference =
         communityEmailPreferenceKnown || communityEmailPreferenceChanged;
+      // Asked before the records and projects go, which are written outside
+      // the profile's transaction; the transaction asks again (checkStored).
+      refuseIfStale(await getStoredUpdatedAt(user.uid));
+      const savedAt = stamp();
       // PROJECTS FIRST (2026-09-23): an image record must never name a
       // project that does not exist yet. Then the records (with projectId),
       // then the profile's order, then the projects no image names any
@@ -3761,6 +3956,7 @@ document.addEventListener("astro:page-load", () => {
       // error, naming the project as its header does.
       const emptiedAtStart = await persistWorkMetadata(user.uid, gallery, projects, storedProjectIds, deletedProjectIds,
         { words: committedWords, mustWrite: mustWriteRecords, projects: committedProjects }, lang, s);
+      refusedWork = null;
 
       const saved = await handleProfileUpdate(
         user,
@@ -3800,6 +3996,8 @@ document.addEventListener("astro:page-load", () => {
           // showed as an error over a profile that had in fact saved).
           active: activeInput.checked,
           galleryBase,
+          updatedAt: savedAt,
+          checkStored: refuseIfStale,
         },
         (pct) => {
           uploadStatus.textContent = `${s["profile.upload.uploading"]} ${pct}%`;
@@ -3808,6 +4006,7 @@ document.addEventListener("astro:page-load", () => {
       );
 
       if (saved.photoImageId) currentPhotoImageId = saved.photoImageId;
+      draft?.seen(savedAt.getTime());
       await adoptGalleryMerge(saved.gallery, user.uid);
 
       // Stored projects that no image names any more — dragged empty, or
@@ -3896,13 +4095,25 @@ document.addEventListener("astro:page-load", () => {
         window.location.replace(localePath(window.location.pathname, savedLanguage));
       }
     } catch (err: unknown) {
+      if (err instanceof ProfileStaleError) {
+        profileStale = true;
+        showStale();
+        return;
+      }
       if (generation !== saveGeneration) return;
       showSaveError(saveErrorMessage(err, s));
+      if (err instanceof WorkSaveError) {
+        const item = gallery.find((g) => g.imageId === err.imageId);
+        refusedWork = err.refused && item ? { imageId: err.imageId, words: workWords(item) } : null;
+        // A pressed Save goes to the work; an autosave leaves the caret where the member types.
+        if (!quiet) takeTo = err.imageId;
+      }
     } finally {
       clearTimeout(watchdog);
       if (!timedOut) {
         setSaving(false);
-        refocus();
+        if (takeTo) showRefusedWork(takeTo);
+        else refocus();
       }
     }
   });
