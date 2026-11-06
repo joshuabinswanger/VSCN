@@ -597,13 +597,8 @@ const searchIndex: SearchIndex = {
           aria-label={t("community.view.label")}
           hidden
         >
-          <button
-            type="button"
-            class="view-toggle__btn"
-            data-mode="index"
-            aria-pressed={DEFAULT_VIEW === "index" ? "true" : "false"}
-          >
-            {t("community.view.index")}
+          <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
+            {t("community.view.grid")}
           </button>
           <button
             type="button"
@@ -613,8 +608,13 @@ const searchIndex: SearchIndex = {
           >
             {t("community.view.gallery")}
           </button>
-          <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
-            {t("community.view.grid")}
+          <button
+            type="button"
+            class="view-toggle__btn"
+            data-mode="index"
+            aria-pressed={DEFAULT_VIEW === "index" ? "true" : "false"}
+          >
+            {t("community.view.index")}
           </button>
         </div>
       </div>
@@ -750,7 +750,7 @@ const searchIndex: SearchIndex = {
         {
           /* THE VIEWS AS TABS, ON A DESKTOP (2026-10-26, Josh's top-bar mock:
             Portfolios / Images / People in one segmented control; since
-            2026-11-06 People / Portfolios / Images, Portfolios in the middle). The same
+            2026-11-06 Images / Portfolios / People, Portfolios in the middle). The same
             three buttons as the view menu's panel, so the controller's
             querySelectorAll over .view-toggle__btn presses, reflects and
             navigates them with no new code. The phone keeps the drop-up
@@ -758,13 +758,8 @@ const searchIndex: SearchIndex = {
         }
         <div class="view-seg" role="group" aria-label={t("community.view.label")}>
           <span class="view-seg__thumb" aria-hidden="true"></span>
-          <button
-            type="button"
-            class="view-toggle__btn"
-            data-mode="index"
-            aria-pressed={DEFAULT_VIEW === "index" ? "true" : "false"}
-          >
-            {t("community.view.index")}
+          <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
+            {t("community.view.grid")}
           </button>
           <button
             type="button"
@@ -774,8 +769,13 @@ const searchIndex: SearchIndex = {
           >
             {t("community.view.gallery")}
           </button>
-          <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
-            {t("community.view.grid")}
+          <button
+            type="button"
+            class="view-toggle__btn"
+            data-mode="index"
+            aria-pressed={DEFAULT_VIEW === "index" ? "true" : "false"}
+          >
+            {t("community.view.index")}
           </button>
         </div>
       </div>

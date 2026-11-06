@@ -107,9 +107,8 @@ const wall = await Promise.all(
     <div class="story-frame">
       <div class="info-hero__text">
         <p class="info-hero__sub info-hero__lead" data-in>{t("info.network.pre")}<strong>{t("info.network.name")}</strong>{t("info.network.post")}</p>
-        <p class="info-hero__sub info-hero__lead" data-in style="--d: 0.4s">{t("info.network.body")}</p>
         <div class="info-cta__row">
-          <a href={portfoliosHref} class="btn-solid info-cta__btn info-cta__btn--down" data-story-next="works" data-in style="--d: 0.8s">{t("info.cta.browse")}<span aria-hidden="true">↓</span></a>
+          <a href={portfoliosHref} class="btn-solid info-cta__btn info-cta__btn--down" data-story-next="works" data-in style="--d: 0.5s">{t("info.cta.browse")}<span aria-hidden="true">↓</span></a>
         </div>
       </div>
     </div>
@@ -398,19 +397,21 @@ const wall = await Promise.all(
     justify-items: center;
     gap: 4rem;
   }
-  /* The board sits the column above the middle of the screen. */
+  /* The board sits the column above the middle of the screen; Josh 11-06:
+     "a bit further up". */
   .story-ch--about .story-frame {
-    padding-bottom: 8rem;
+    padding-bottom: 14rem;
 
     @media (--bp-mobile) {
-      padding-bottom: 4rem;
+      padding-bottom: 8rem;
     }
   }
   .info-col {
     display: flex;
     flex-direction: column;
     gap: 3rem;
-    width: min(100%, 24rem);
+    /* Josh 11-06: "a bit wider" (was 24rem). */
+    width: min(100%, 34rem);
 
     @media (--bp-mobile) {
       gap: 2rem;
@@ -446,13 +447,14 @@ const wall = await Promise.all(
   .info-list {
     display: flex;
     flex-direction: column;
-    gap: 3rem;
+    /* Josh 11-06: "less gap between points" (was 3rem / 2.4rem). */
+    gap: 1.6rem;
     margin: 0;
     padding: 0;
     list-style: none;
 
     @media (--bp-mobile) {
-      gap: 2.4rem;
+      gap: 1.4rem;
     }
   }
   /* The board's bullet: a round dot, 7px, 18px before the words, on the
@@ -520,6 +522,14 @@ const wall = await Promise.all(
 
   /* THE WORKS CUE: the arrow, under the next frame's word (OUR MISSION), at the foot of
      the works frame while that frame is on screen. */
+  /* Josh 11-06: the cards "a bit higher" in their screen. */
+  .story-ch--works .story-frame {
+    padding-bottom: 6rem;
+
+    @media (--bp-mobile) {
+      padding-bottom: 4rem;
+    }
+  }
   .story[data-story-on] .story-ch--works .story-cue {
     @media (--bp-desktop) {
       bottom: 1.5rem;
@@ -594,12 +604,8 @@ const wall = await Promise.all(
   /* Board 03.2: the name large, the project small under it. */
   /* Josh 11-06: the words right under the picture. */
   .info-wall__name {
-    margin-top: 12px;
+    margin-top: 6px;
     color: var(--color-dark);
-
-    @media (--bp-mobile) {
-      margin-top: 10px;
-    }
   }
   .info-wall__project {
     margin-top: 6px;
