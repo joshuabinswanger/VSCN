@@ -22,7 +22,7 @@ export const ui: Record<string, Record<string, string>> = {
     "hero.cta.community": "Community",
 
     // InfoPage (restyled 2026-11-02, design-kit/vscn-landing.af)
-    "info.hero.title": "Knowledge deserves a visual form.",
+    "info.hero.title": "Images create understanding.",
     "info.network.pre": "The ",
     "info.network.name": "Visual Science Communication Network",
     "info.network.post": " is a community passionate about giving knowledge a visual form.",
@@ -782,7 +782,7 @@ export const ui: Record<string, Record<string, string>> = {
     "hero.cta.community": "Community",
 
     // InfoPage (restyled 2026-11-02, design-kit/vscn-landing.af)
-    "info.hero.title": "Wissen verdient eine visuelle Form.",
+    "info.hero.title": "Bilder schaffen Verständnis.",
     "info.network.pre": "Das ",
     "info.network.name": "Visual Science Communication Network",
     "info.network.post": " ist eine Gemeinschaft, die sich mit Leidenschaft dafür einsetzt, Wissen eine visuelle Form zu geben.",
