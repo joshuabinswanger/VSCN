@@ -1194,6 +1194,15 @@ const BRAND_SLOTS: BrandSlot[] = [
     const root = document.documentElement;
     if (!brandScroller) return;
     const y = brandScroller.scrollTop;
+    // SWITCHED OFF (2026-11-06, Josh: "the label and profile button don't
+    // disappear ever on the site"): VSCN and the login stay put on every
+    // page. The direction logic below is kept for the day it comes back.
+    const RIDES_AWAY = false;
+    if (!RIDES_AWAY) {
+      delete root.dataset.headerAway;
+      headerLastY = y;
+      return;
+    }
     if (leavingPage || root.hasAttribute("data-arriving") || root.hasAttribute("data-arrive-hold")) {
       headerLastY = y;
       return;

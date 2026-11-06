@@ -91,6 +91,17 @@
   --fs-190: 26px; /* 24.70 */
   --fs-225: 30px; /* 29.25 */
   --fs-300: 40px; /* 39.00 — the phone menu's lines */
+  /* THE INFO PAGE'S OPENING LINES (2026-11-02, Josh: "bigger and bolder";
+     design-kit/vscn-landing.af): the headline and the sentence under it. */
+  /* About 70% of the window wide for the Info headline (Josh 11-04, "can
+     be bigger, 70vw"): the line is ~12 em long, so 5.8vw; never under 64. */
+  --fs-hero: max(44px, 4.4vw); /* about 70vw for "Knowledge deserves a visual form." (5.8vw for the shorter headline until 2026-11-05) */
+  --fs-hero-body: 20px; /* the Info hero's third sentence (board 03.1, 2026-11-05) */
+  --fs-about-head: 35px; /* the Info About column heading (board 03.31: 35.4) */
+  --fs-about-point: 17px; /* its points (board 03.31: 17.3) */
+  --fs-wall-name: 27px; /* the Info carousel's artist name (board 03.2: 23.4; Josh 11-06: "a bit bigger") */
+  --fs-hero-lead: 40px; /* the Info story's second frame, a step over the sub (Josh 11-06: "second frame text bigger") */
+  --fs-hero-sub: 30px; /* 24 until 2026-11-02 evening, Josh: "second sentence bigger" */
   /* Every tag chip (.tagchip). Its own token because tags go the OTHER way on
      a phone: down to the whole pixel below 8.64px, where everything else goes
      up to the one above. Not in the desktop bump either: still 0.72rem.
@@ -147,6 +158,13 @@
     --fs-190: 28px;
     --fs-225: 32px;
     --fs-300: 40px;
+    --fs-hero: 12vw;
+    --fs-hero-lead: 26px;
+    --fs-hero-sub: 20px;
+    --fs-hero-body: 16px;
+    --fs-about-head: 26px;
+    --fs-about-point: 16px;
+    --fs-wall-name: 22px;
     --fs-tag: 10px;
     --fs-label: 11px;
   }
@@ -210,7 +228,6 @@
    which are all 12px on a phone and 11–12px on desktop: one voice. */
 .t-heading,
 .label,
-.info-heading,
 .legal-heading,
 .section-tab,
 .ob-progress-text,
@@ -280,7 +297,7 @@
 .mprof__project-desc,
 .mprof__text,
 .pdisc__bio,
-.pswp--vscn .pswp__vscn-text-caption {
+.pswp--vscn .pswp__vscn-sheet-caption {
   font-size: var(--fs-100);
   font-weight: 400;
   line-height: 1.5;
@@ -289,12 +306,63 @@
    image title should be the same size as flow text just bolder"). On a
    desktop it steps down with the description and the text blocks to the
    flow text's --fs-85 (the desktop block below); on a phone all are 13px.
-   The member's name under Info's carousel picture speaks it too. */
-.mprof__caption-line,
-.info-wall__name {
+   (Info's carousel names left for NAME on 2026-11-02, Josh: "more similar
+   to the other styles".) */
+.mprof__caption-line {
   font-size: var(--fs-100);
   font-weight: 600;
   line-height: 1.5;
+}
+/* THE INFO HERO (2026-11-02, vscn-landing.af): a display headline, bold and
+   tight, about 70% of the window wide on a desktop (two lines across a
+   phone), and light sentences under it, both at 30 / 20 (11-04: "3
+   sentence same size as 2nd"). */
+.info-hero__title {
+  font-size: var(--fs-hero);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.info-hero__sub {
+  font-size: var(--fs-hero-sub);
+  font-weight: 300;
+  line-height: 1.3;
+}
+.info-hero__lead {
+  font-size: var(--fs-hero-lead);
+  line-height: 1.25;
+}
+/* The rest of the Info page as Josh's boards of 2026-11-05 set it
+   (Desktop/vscn-split/vscn-landing-story.af): the hero's third sentence a
+   step under the second; the About heading as HEADING scaled up, its points
+   between body and sub; the carousel's artist large, the project small. */
+.info-hero__body {
+  font-size: var(--fs-hero-body);
+  font-weight: 300;
+  line-height: 1.3;
+}
+.info-heading {
+  font-size: var(--fs-about-head);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.info-list li {
+  font-size: var(--fs-about-point);
+  font-weight: 400;
+  line-height: 1.35;
+}
+.info-wall__name {
+  font-size: var(--fs-wall-name);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.info-wall__project {
+  font-size: var(--fs-85);
+  font-weight: 400;
+  line-height: 1.4;
 }
 /* THE LIGHTBOX DESCRIPTION, A STEP UNDER ITS TITLE (2026-10-16, Josh: "the
    description text should be smaller on desktop"). 12px under the 14px title
@@ -518,7 +586,6 @@
   .mprof__desc,
   .mprof__text,
   .mprof__caption-line,
-  .info-wall__name,
   .cindex__line .pdisc__bio {
     font-size: var(--fs-85);
   }

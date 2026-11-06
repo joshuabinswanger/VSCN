@@ -63,14 +63,6 @@ function mobileViewport(viewportSize: Point): boolean {
 }
 
 /**
- * The gap between the picture's edge and the words, in px. Matches the
- * `--space-*` rhythm loosely rather than exactly: this is measured against an
- * image edge, not against a text baseline, so it wants to be a hair looser
- * than a normal paragraph gap or the words read as part of the picture.
- */
-const GAP = 20;
-
-/**
  * THE SPACE THE WORDS NEED, RESERVED — the other half of the placement above.
  *
  * PhotoSwipe fits the image inside the viewport MINUS this padding and then
@@ -120,6 +112,9 @@ const BAND_TEXT = 0.23;
 const TOP_FLOOR_DESKTOP = 56;
 const TOP_FLOOR_MOBILE = 44;
 
+/** The gap between the picture's bottom edge and the tab under it, in px. */
+const GAP = 10;
+
 export function lightboxPadding(viewportSize: Point, _itemData: SlideData) {
   const mobile = mobileViewport(viewportSize);
   const top = Math.max(
@@ -143,6 +138,8 @@ interface TriggerText {
   siteLink: string;
   project: string;
   projectLink: string;
+  /** The project on the member's page, `/members/<slug>#project-<id>` (2026-11-04). */
+  projectHref: string;
   affiliations: { name: string; href?: string }[];
 }
 
@@ -169,6 +166,7 @@ function readTrigger(el: HTMLElement | undefined): TriggerText {
     siteLink: el?.dataset.pswpSiteLink?.trim() || "",
     project: el?.dataset.pswpProject?.trim() || "",
     projectLink: el?.dataset.pswpProjectLink?.trim() || "",
+    projectHref: el?.dataset.pswpProjectHref?.trim() || "",
     affiliations: parseAffiliations(el?.dataset.pswpAffiliations),
   };
 }
@@ -300,248 +298,465 @@ export function registerLightboxText(
       },
     });
 
-    // ── The words about the picture ─────────────────────────────────────
-    // THE TITLE IS THE DROPDOWN (2026-10-15, Josh: "the show more text should
-    // be left aligned and be the title and drop down button to show the
-    // description"). The caption opens the block, left-aligned under the
-    // picture, with a chevron after it; pressing it unfolds everything else —
-    // description, links, project, affiliations — beneath it. Folded by
-    // default; the choice holds while paging, so a reader who opened one
-    // description reads the next one too, and a new lightbox starts folded.
-    // A work with no caption still gets the chevron alone (named by its
-    // aria-label); a work with nothing but a caption gets no chevron.
-    // Replaces the three-hairline words toggle of the same morning, which hid
-    // the title too.
-    let open = false;
+    // ── The words about the picture: one sheet, peeking or open ──────────
+    // WHAT IT OPENS IS A SHEET (2026-11-04, Josh: "a way to read the long
+    // descriptions comfortably ... a sheet that slides up", over the image on
+    // desktop as well). From 10-15 the title unfolded the description IN
+    // PLACE, inside the 23 % band under the picture: on a phone that was a
+    // ~180px slot for a paragraph plus its links, with the links pressed
+    // against the browser's bottom edge where they could not be hit. The sheet
+    // rises from the window's foot over the picture, scrolls like a page, and
+    // pads its end clear of the home bar. It sits OUTSIDE PhotoSwipe's
+    // scroll-wrap, so the picture around it still drags, pinches and zooms.
+    //
+    // THE TITLE IS THE SHEET'S OWN EDGE (2026-11-05, Josh: "the drop down
+    // arrow is placed weirdly"). From 11-04 the title hung under the picture
+    // with a chevron after it and summoned the sheet as a second panel; the
+    // chevron followed the title's length and never stood anywhere in
+    // particular. Now the sheet PEEKS: shut, only its top shows at the
+    // window's foot, a grabber over the title, and tapping or pulling it up
+    // grows the same panel open. One element in two sizes, the iOS sheet
+    // convention, so no arrow is needed. A work with nothing past its title
+    // peeks without the grabber and does not open.
+    //
+    // Open or shut holds while paging, so a reader who opened one description
+    // reads the next one too; a new lightbox starts shut (this closure is per
+    // open). Tap the title, swipe the sheet down or press Esc to shut it.
+    // Filled in below, once the placement is attached; the sheet calls it
+    // when it opens or shuts.
+    let placeSheet: () => void = () => {};
     ui.registerElement({
-      name: "vscn-text",
-      className: "pswp__vscn-text",
+      name: "vscn-sheet",
+      className: "pswp__vscn-sheet",
       appendTo: "root",
-      order: 10,
+      order: 11,
       onInit: (el, pswp) => {
-        const render = () => {
-          const { caption, description, link, siteLink, project, projectLink, affiliations } = readTrigger(
-            pswp.currSlide?.data.element as HTMLElement | undefined,
-          );
-          el.replaceChildren();
-          const more = document.createElement("div");
-          more.className = "pswp__vscn-text-more";
-          more.id = "pswp-vscn-text-more";
-          if (description) {
-            const desc = document.createElement("span");
-            desc.className = "pswp__vscn-text-desc";
-            desc.textContent = description;
-            more.append(desc);
-          }
-          // WHERE THIS IMAGE APPEARED (2026-09-04, from the sketch: "DESC
-          // (WITH LINKS)"). The field has existed since the projects feature
-          // was withdrawn and its only surface was the member's own page, so
-          // an image opened from the directory lost the paper it illustrates.
-          // Stored without a scheme and rendered with one — the same split
-          // href()/workLink() make everywhere else on the site.
-          //
-          // TWO LINKS SINCE 2026-09-10 (Josh: "the image link should be
-          // additional"): the member's own project page first, the
-          // publication second, on one row. Since 2026-10-16 they print by
-          // ROLE, "Link" and "Publication" (Josh); two bare hosts never said
-          // which was which. The title carries the role and the host.
-          if (siteLink || link) {
-            const row = document.createElement("span");
-            row.className = "pswp__vscn-text-links";
-            const add = (href: string, text: string, title: string) => {
-              const a = document.createElement("a");
-              a.className = "pswp__vscn-text-link";
-              a.href = href;
-              a.target = "_blank";
-              a.rel = "noopener";
-              a.title = `${title} — ${linkLabel(href)}`;
-              a.textContent = text;
-              row.append(a);
-            };
-            if (siteLink) add(siteLink, labels.siteLinkText, labels.siteLinkTitle);
-            if (link) add(link, labels.linkText, labels.linkTitle);
-            more.append(row);
-          }
-          // THE PROJECT THIS PICTURE IS PART OF (2026-09-23,
-          // documentation/20260923-projects-design.md): its title, linked
-          // when the project has a link, then who it was made with. Member
-          // text, so textContent throughout.
-          if (project) {
-            const line = document.createElement("span");
-            line.className = "pswp__vscn-text-project";
-            line.append(`${labels.partOf} `);
-            const name = document.createElement(projectLink ? "a" : "span");
-            name.textContent = project;
-            if (name instanceof HTMLAnchorElement) {
-              name.href = projectLink;
-              name.target = "_blank";
-              name.rel = "noopener";
-            }
-            line.append(name);
-            more.append(line);
-          }
-          if (affiliations.length) {
-            const line = document.createElement("span");
-            line.className = "pswp__vscn-text-affiliations";
-            line.append(`${labels.with} `);
-            affiliations.forEach((a, i) => {
-              if (i > 0) line.append(" · ");
-              const node = document.createElement(a.href ? "a" : "span");
-              node.textContent = a.name;
-              if (node instanceof HTMLAnchorElement && a.href) {
-                node.href = a.href;
-                // A member credit is on-site (ClientRouter picks it up); an external one opens a tab.
-                if (/^https?:/i.test(a.href)) { node.target = "_blank"; node.rel = "noopener"; }
-              }
-              line.append(node);
-            });
-            more.append(line);
-          }
-          const hasMore = more.childElementCount > 0;
+        el.id = SHEET_ID;
+        el.setAttribute("role", "region");
 
-          // The head: the caption, a button when there is something to unfold.
-          if (caption || hasMore) {
-            const head = document.createElement(hasMore ? "button" : "span");
-            head.className = "pswp__vscn-text-head";
-            if (caption) {
-              const line = document.createElement("span");
-              line.className = "pswp__vscn-text-caption";
-              line.textContent = caption;
-              head.append(line);
-            }
-            el.append(head);
-            if (head instanceof HTMLButtonElement) {
-              head.type = "button";
-              head.setAttribute("aria-controls", more.id);
-              const chev = document.createElement("span");
-              chev.className = "pswp__vscn-text-chev";
-              chev.setAttribute("aria-hidden", "true");
-              head.append(chev);
-              el.append(more);
-              const apply = () => {
-                const name = open ? labels.hideText : labels.showText;
-                head.setAttribute("aria-expanded", String(open));
-                // A caption names the button itself; the chevron alone needs a name.
-                if (!caption) head.setAttribute("aria-label", name);
-                head.title = name;
-                more.hidden = !open;
-                el.classList.toggle("is-open", open);
-                el.scrollTop = 0;
-                markClipped(el);
-              };
-              head.addEventListener("click", () => {
-                open = !open;
-                apply();
-              });
-              apply();
-            }
+        // The grabber and the title are the handle: tap to open or shut,
+        // or drag. The body below them is the part that scrolls.
+        const handle = document.createElement("div");
+        handle.className = "pswp__vscn-sheet-handle";
+        const grip = document.createElement("span");
+        grip.className = "pswp__vscn-sheet-grip";
+        grip.setAttribute("aria-hidden", "true");
+        const head = document.createElement("button");
+        head.type = "button";
+        head.className = "pswp__vscn-sheet-head";
+        head.setAttribute("aria-controls", SHEET_ID);
+        const caption = document.createElement("span");
+        caption.className = "pswp__vscn-sheet-caption";
+        head.append(caption);
+        handle.append(grip, head);
+        const body = document.createElement("div");
+        body.className = "pswp__vscn-sheet-body";
+        // On a desktop the panel hangs under the picture and PULLS DOWN, so
+        // its grabber sits at its foot instead (lightbox.css shows one or
+        // the other); a click on it toggles like the title.
+        const foot = document.createElement("span");
+        foot.className = "pswp__vscn-sheet-foot";
+        foot.setAttribute("aria-hidden", "true");
+        el.append(handle, body, foot);
+        foot.addEventListener("click", () => hasMore && setOpen(!open));
+
+        // THE PEEK IS THE HANDLE'S HEIGHT, measured: a title that wraps to
+        // two lines peeks taller, and the CSS slides the rest below the edge.
+        const measure = () => el.style.setProperty("--peek", `${handle.offsetHeight}px`);
+        new ResizeObserver(measure).observe(handle);
+
+        let open = false;
+        let hasMore = false;
+        let label = "";
+        const apply = (focus: boolean) => {
+          const shown = open && hasMore;
+          el.classList.toggle("is-open", shown);
+          el.classList.toggle("has-more", hasMore);
+          body.toggleAttribute("inert", !shown);
+          body.setAttribute("aria-hidden", String(!shown));
+          pswp.element?.classList.toggle("pswp--vscn-sheet-open", shown);
+          el.style.translate = "";
+          // Nothing past the title: a plain line, not a control.
+          head.disabled = !hasMore;
+          if (hasMore) {
+            const name = shown ? labels.hideText : labels.showText;
+            head.setAttribute("aria-expanded", String(shown));
+            head.setAttribute("aria-label", label ? `${label} — ${name}` : name);
+            head.title = name;
+          } else {
+            head.removeAttribute("aria-expanded");
+            head.removeAttribute("aria-label");
+            head.removeAttribute("title");
           }
-          el.classList.toggle("is-empty", !caption && !hasMore);
-          // The block can scroll; a slide change has to start it at the top or
-          // the next description opens mid-paragraph.
-          el.scrollTop = 0;
-          // The next work's words FADE IN rather than swap (2026-10-16): the
-          // block is rebuilt per slide, so a CSS transition has nothing to
-          // start from. Same curve as --lb-ease in lightbox.css.
-          if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
-            el.animate(
-              [{ opacity: 0, translate: "0 0.25rem" }, { opacity: 1, translate: "0 0" }],
-              { duration: 360, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)" },
-            );
-          }
+          if (focus) head.focus({ preventScroll: true });
         };
+        const setOpen = (next: boolean, focus = false) => {
+          open = next;
+          apply(focus);
+          // A phone may lift an open tab (attachSheetPlacement); the move
+          // animates only for the toggle, never while PhotoSwipe pans.
+          el.classList.add("is-toggling");
+          placeSheet();
+          setTimeout(() => el.classList.remove("is-toggling"), 450);
+        };
+
+        const render = () => {
+          const t = readTrigger(pswp.currSlide?.data.element as HTMLElement | undefined);
+          hasMore = hasSheetContent(t);
+          label = t.caption;
+          // A work with words but no title still needs something to pull.
+          caption.textContent = t.caption || (hasMore ? labels.showText : "");
+          el.classList.toggle("is-empty", !t.caption && !hasMore);
+          el.setAttribute("aria-label", t.caption || labels.showText);
+          body.replaceChildren(...sheetContent(t, labels, pswp));
+          body.scrollTop = 0;
+          apply(false);
+          measure();
+          // The next work's words FADE IN rather than swap (2026-10-16).
+          fadeIn(open && hasMore ? body : head);
+        };
+
+        handle.addEventListener("click", (e) => {
+          if (dragged || !hasMore) return;
+          // A keyboard press keeps focus on the head; a tap leaves it be.
+          setOpen(!open, e.detail === 0);
+        });
+
+        // DRAG IT, on the handle: up to open, down to shut. The sheet follows
+        // the finger; past 70px (40 up) or on a flick it goes, short of that
+        // it springs back.
+        let startY = 0;
+        let startT = 0;
+        let dy = 0;
+        let dragging = false;
+        let dragged = false;
+        handle.addEventListener("pointerdown", (e) => {
+          // Under the picture on a desktop it is a mouse's: click, no drag.
+          if (!hasMore || e.button !== 0 || el.classList.contains("is-anchored")) return;
+          dragging = true;
+          dragged = false;
+          startY = e.clientY;
+          startT = e.timeStamp;
+          dy = 0;
+          handle.setPointerCapture(e.pointerId);
+        });
+        handle.addEventListener("pointermove", (e) => {
+          if (!dragging) return;
+          const raw = e.clientY - startY;
+          // Shut, it lifts no further than its own height; open, it only goes down.
+          dy = open ? Math.max(0, raw) : Math.max(raw, -(el.offsetHeight - handle.offsetHeight));
+          if (Math.abs(dy) > 6) {
+            dragged = true;
+            el.classList.add("is-dragging");
+            el.style.translate = `0 ${dy}px`;
+          }
+        });
+        const release = (e: PointerEvent) => {
+          if (!dragging) return;
+          dragging = false;
+          el.classList.remove("is-dragging");
+          const speed = Math.abs(dy) / Math.max(1, e.timeStamp - startT);
+          const flick = Math.abs(dy) > 24 && speed > 0.5;
+          if (dragged && open && (dy > 70 || flick)) setOpen(false);
+          else if (dragged && !open && (dy < -40 || flick)) setOpen(true);
+          else el.style.translate = "";
+          // The click that follows a drag must not count as a tap.
+          if (dragged) setTimeout(() => (dragged = false), 0);
+        };
+        handle.addEventListener("pointerup", release);
+        handle.addEventListener("pointercancel", release);
+
+        // PhotoSwipe takes every wheel on its root (to pan the picture) and
+        // cancels it, which would stop the sheet scrolling; stop it here.
+        el.addEventListener("wheel", (e) => e.stopPropagation(), { passive: true });
+
+        // ESC SHUTS THE SHEET FIRST, the lightbox on the next press. Keys
+        // meant for the text — scrolling it, or pressing a link — are left
+        // to the browser while focus is inside the sheet: PhotoSwipe would
+        // otherwise pan the picture with the arrows.
+        pswp.on("keydown", (ev) => {
+          const e = ev.originalEvent;
+          if (e.key === "Escape" && open && hasMore) {
+            ev.preventDefault();
+            setOpen(false, el.contains(document.activeElement));
+            return;
+          }
+          if (el.contains(e.target as Node) && ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " ", "Enter"].includes(e.key)) {
+            ev.preventDefault();
+          }
+        });
+
         pswp.on("change", render);
         render();
       },
     });
 
-    // ── Placement ───────────────────────────────────────────────────────
-    // Both blocks are absolutely positioned in the root and moved here, off
-    // the picture's rendered rect. Written once for both, on the pswp instance
-    // rather than inside either onInit, because the two have to agree about
-    // where the picture is and reading the geometry twice per event to tell
-    // them the same thing would be the bug waiting to happen.
+    // A ZOOMED PICTURE PUTS THE PEEK AWAY: a reader who has zoomed in is
+    // looking at the picture. An open sheet stays (lightbox.css).
     const pswp = lightbox.pswp;
-    if (pswp) attachPlacement(pswp);
+    if (pswp) placeSheet = attachSheetPlacement(pswp);
   });
 }
 
-/**
- * Says whether there is text past the block's bottom edge, which is the only
- * thing that makes the fade in lightbox.css appear. Read AFTER the width and
- * max-height are written, and again when the description unfolds, because
- * each changes the answer — and read off scrollHeight rather than predicted
- * from the character count, since where a paragraph wraps is the browser's
- * business.
- */
-function markClipped(el: HTMLElement): void {
-  el.classList.toggle("is-clipped", el.scrollHeight > el.clientHeight + 1);
+/** The sheet's id, which its own head controls. */
+const SHEET_ID = "pswp-vscn-sheet";
+
+/** Whether a work has anything for the sheet to hold beyond its title. */
+function hasSheetContent(t: TriggerText): boolean {
+  return Boolean(t.description || t.link || t.siteLink || t.project || t.affiliations.length);
 }
 
-function attachPlacement(pswp: PhotoSwipe): void {
+function fadeIn(el: HTMLElement): void {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  el.animate(
+    [{ opacity: 0, translate: "0 0.25rem" }, { opacity: 1, translate: "0 0" }],
+    { duration: 360, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)" },
+  );
+}
 
+/** Same page, ignoring a trailing slash: the project is on the page under the lightbox. */
+function samePage(url: URL): boolean {
+  const strip = (p: string) => p.replace(/\/+$/, "") || "/";
+  return url.origin === location.origin && strip(url.pathname) === strip(location.pathname);
+}
+
+/**
+ * What the sheet holds under its title: the description, the piece's links,
+ * the project it is part of and who it was made with. Member text throughout,
+ * so textContent, never innerHTML.
+ */
+function sheetContent(t: TriggerText, labels: LightboxTextLabels, pswp: PhotoSwipe): Node[] {
+  const out: Node[] = [];
+  if (t.description) {
+    const desc = document.createElement("p");
+    desc.className = "pswp__vscn-text-desc";
+    desc.textContent = t.description;
+    out.push(desc);
+  }
+  // WHERE THIS IMAGE APPEARED (2026-09-04) and the member's own project page
+  // (2026-09-10), by ROLE since 2026-10-16: "Link" and "Publication" (Josh).
+  // The title carries the role and the host. Since 2026-11-04 the PROJECT's
+  // own outside link joins them, labelled by its host as on the member page:
+  // "Part of …" now goes to the project on VSCN instead (below).
+  const projectSite = t.projectLink && t.projectLink !== t.siteLink && t.projectLink !== t.link ? t.projectLink : "";
+  if (t.siteLink || t.link || projectSite) {
+    const row = document.createElement("p");
+    row.className = "pswp__vscn-text-links";
+    const add = (href: string, text: string, title: string) => {
+      const a = document.createElement("a");
+      a.className = "pswp__vscn-text-link";
+      a.href = href;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.title = title ? `${title} — ${linkLabel(href)}` : linkLabel(href);
+      a.textContent = text;
+      row.append(a);
+    };
+    if (t.siteLink) add(t.siteLink, labels.siteLinkText, labels.siteLinkTitle);
+    if (t.link) add(t.link, labels.linkText, labels.linkTitle);
+    if (projectSite) add(projectSite, linkLabel(projectSite).split("/")[0], "");
+    out.push(row);
+  }
+  // THE PROJECT THIS PICTURE IS PART OF (2026-09-23), and since 2026-11-04
+  // (Josh: "a way to navigate to the projects from the lightbox") a link to
+  // that project on the member's page, `/members/<slug>#project-<id>`. On
+  // another page the router takes it and the lightbox goes with the swap;
+  // on the member's own page the lightbox closes and the page scrolls to the
+  // project. No href (the editor's preview) prints the title plain.
+  if (t.project) {
+    const line = document.createElement("p");
+    line.className = "pswp__vscn-text-project";
+    line.append(`${labels.partOf} `);
+    const name = document.createElement(t.projectHref ? "a" : "span");
+    name.textContent = t.project;
+    if (name instanceof HTMLAnchorElement) {
+      name.href = t.projectHref;
+      name.addEventListener("click", (e) => {
+        if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        const url = new URL(name.href, location.href);
+        if (!samePage(url)) return;
+        e.preventDefault();
+        const target = url.hash ? document.getElementById(decodeURIComponent(url.hash.slice(1))) : null;
+        pswp.on("destroy", () => {
+          const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+          target?.scrollIntoView({ block: "start", behavior: reduced ? "instant" : "smooth" });
+        });
+        pswp.close();
+      });
+    }
+    line.append(name);
+    out.push(line);
+  }
+  if (t.affiliations.length) {
+    const line = document.createElement("p");
+    line.className = "pswp__vscn-text-affiliations";
+    line.append(`${labels.with} `);
+    t.affiliations.forEach((a, i) => {
+      if (i > 0) line.append(" · ");
+      const node = document.createElement(a.href ? "a" : "span");
+      node.textContent = a.name;
+      if (node instanceof HTMLAnchorElement && a.href) {
+        node.href = a.href;
+        // A member credit is on-site (ClientRouter picks it up); an external one opens a tab.
+        if (/^https?:/i.test(a.href)) { node.target = "_blank"; node.rel = "noopener"; }
+      }
+      line.append(node);
+    });
+    out.push(line);
+  }
+  return out;
+}
+
+function attachSheetPlacement(pswp: PhotoSwipe): () => void {
+  // Compared against the slide's own initial level rather than 1: a small
+  // image opens BELOW 1:1 and a large one above it, so 1 is not the resting
+  // state of anything.
+  let wasZoomed = false;
   const place = () => {
-    const root = pswp.element;
-    const text = root?.querySelector<HTMLElement>(".pswp__vscn-text");
     const slide = pswp.currSlide;
-    if (!root || !text || !slide) return;
-
-    // THE WORDS ARE HIDDEN WHILE ZOOMED IN. The block is glued to the picture's
-    // rect, and a zoomed picture's rect is mostly off-screen — following it
-    // would drag the caption out of the window. A reader who has zoomed in is
-    // looking at the picture, not reading about it. (The artist line is not
-    // glued to the picture any more and stays: see the credit's rule in
-    // lightbox.css.) Compared against the slide's own initial level rather than 1: a
-    // small image opens BELOW 1:1 and a large one above it, so 1 is not the
-    // resting state of anything.
+    const root = pswp.element;
+    const sheet = root?.querySelector<HTMLElement>(".pswp__vscn-sheet");
+    if (!slide || !root || !sheet) return;
     const initial = slide.zoomLevels?.initial ?? 1;
-    const zoomed = (slide.currZoomLevel ?? initial) > initial * 1.02;
+    // A hair over the resting level, so the tab leaves as the zoom starts.
+    const zoomed = (slide.currZoomLevel ?? initial) > initial * 1.001;
     root.classList.toggle("pswp--vscn-zoomed-words", zoomed);
-    if (zoomed) return;
+    // The move between the two places animates (a FLIP: measure, re-anchor,
+    // slide from the old place); following the picture never does.
+    const flip = zoomed !== wasZoomed ? sheet.getBoundingClientRect().top : null;
+    wasZoomed = zoomed;
 
+    // IT HANGS UNDER THE PICTURE (2026-11-05, Josh: "it should sit under
+    // the image on desktop", "the tab should pull down", and then "on
+    // mobile it should also sit under the image"). A rounded tab GAP below
+    // the picture, at the picture's width; opening unfolds it DOWNWARD into the band under the picture.
+    sheet.classList.add("is-anchored");
+    // ZOOMED IN, THE TAB GOES TO THE WINDOW'S FOOT (2026-11-05, Josh: "label
+    // should not disappear when zoomed in", then "just make it move to the
+    // bottom on zoom in"). A zoomed picture's rect runs off the window, so
+    // the tab stops following it and sits at the foot, keeping its width.
+    // Anchored by its BOTTOM there, so shutting it collapses DOWN into the
+    // foot and opening grows up.
+    if (zoomed) {
+      const vy = pswp.viewportSize.y;
+      sheet.style.top = "auto";
+      sheet.style.bottom = "16px";
+      sheet.style.maxHeight = `${Math.round(vy - 80)}px`;
+      sheet.style.setProperty("--body-max", `${Math.round(Math.max(0, vy - 80 - 90))}px`);
+      slideFrom(sheet, flip);
+      return;
+    }
+    sheet.style.bottom = "";
+    const viewport = pswp.viewportSize;
+    const mobile = mobileViewport(viewport);
     const zoom = slide.currZoomLevel || 1;
     const w = (slide.width || 0) * zoom;
     const h = (slide.height || 0) * zoom;
+    if (!w || !h) return;
     const x = slide.pan?.x ?? 0;
     const y = slide.pan?.y ?? 0;
-    if (!w || !h) return;
-
-    // THE ARTIST LINE IS NOT PLACED HERE (2026-10-14, Josh: "make the artist
-    // name stick to the top left"). It is pinned to the window's top-left in
-    // lightbox.css, in the controls row's height, so it stays in one place
-    // from slide to slide and through zoom instead of floating at whatever
-    // height the picture's centring left its corner.
-
-    const viewport = pswp.viewportSize;
-    // In the words' band, at the picture's own measure, on every shape: the
-    // artwork sets the column width, which is what makes the words look placed
-    // rather than laid over the window. A portrait picture got a column to its
-    // right instead from 09-04 to 09-06 — see the header and lightboxPadding
-    // for why that went.
-    // THE TOP IS THE PICTURE'S (2026-10-16, Josh: "wide images have a gap to
-    // the description"). From 10-13 the words started at the band's foot, so
-    // they sat at one height on every slide. But a wide picture is centred in
-    // its 60 % band, which left a hole between its bottom edge and the title.
-    // Now the title hangs off the picture itself, GAP below it, whatever its
-    // shape. The band below stays reserved (lightboxPadding), so the room
-    // under a wide picture only grows.
-    // Bounded so a long description cannot run past the foot of the window;
-    // past that it scrolls, and markClipped shows the fade that says so.
-    const top = y + h + GAP;
-    text.style.left = `${Math.round(x)}px`;
-    text.style.top = `${Math.round(top)}px`;
-    text.style.width = `${Math.round(w)}px`;
-    text.style.maxHeight = `${Math.round(viewport.y - top - 16)}px`;
-    markClipped(text);
+    const edge = mobile ? 12 : 32;
+    // EXACTLY THE PICTURE'S WIDTH (2026-11-05, Josh: "make the box the same
+    // width as the image"); a 22rem reading minimum went with it.
+    const width = Math.min(viewport.x - 2 * edge, w);
+    const left = Math.min(viewport.x - edge - width, Math.max(edge, x));
+    let top = y + h + GAP;
+    const foot = 16;
+    // AN OPEN TAB GROWS DOWN FIRST, and up only when its words need more
+    // than the room below (2026-11-05, Josh: "it should expand down as far
+    // possible and not expand from the middle", then "the box can grow up
+    // too when there is a lot of text"). It rises over the picture no
+    // further than its text needs and never under the controls row; past
+    // that the body scrolls.
+    if (sheet.classList.contains("is-open")) {
+      const handle = sheet.querySelector<HTMLElement>(".pswp__vscn-sheet-handle");
+      const body = sheet.querySelector<HTMLElement>(".pswp__vscn-sheet-body");
+      const tail = sheet.querySelector<HTMLElement>(".pswp__vscn-sheet-foot");
+      const tailBox = tail ? tail.offsetHeight + 6 : 0;
+      const need = (handle?.offsetHeight ?? 0) + (body?.scrollHeight ?? 0) + tailBox + 8;
+      const floor = viewport.y - foot - need;
+      if (floor < top) top = Math.max(mobile ? 52 : 64, floor);
+    }
+    const room = Math.max(0, viewport.y - top - foot);
+    const peek = parseFloat(sheet.style.getPropertyValue("--peek")) || 48;
+    sheet.style.left = `${Math.round(left)}px`;
+    sheet.style.width = `${Math.round(width)}px`;
+    sheet.style.top = `${Math.round(top)}px`;
+    sheet.style.maxHeight = `${Math.round(room)}px`;
+    sheet.style.setProperty("--body-max", `${Math.round(Math.max(0, room - peek - 48))}px`);
+    slideFrom(sheet, flip);
   };
-
-  // Every event that can move the picture. `change` for a new slide,
-  // `initialZoomPan` for the position it opens at (which is set AFTER change),
-  // `resize` for the window, `zoomPanUpdate` for the rest — including each
-  // frame of the open and close animations, which is why `place` reads state
-  // and writes styles and does nothing else.
   pswp.on("change", place);
   pswp.on("initialZoomPan", place);
   pswp.on("resize", place);
   pswp.on("zoomPanUpdate", place);
+
+  // THE TAB TRAVELS WITH ITS PICTURE (2026-11-05, Josh: "animate the
+  // description box on drag with the image together"). While the strip
+  // moves — a finger's swipe or a paging glide — the tab is shifted by its
+  // own picture's offset and dims as it goes, so it leaves with it.
+  //
+  // Measured from the slide the tab BELONGS to: PhotoSwipe moves its target
+  // index the moment a glide starts but only swaps `currSlide` (and fires
+  // `change`) when it lands, so counting from the target made the old tab
+  // jump and slide back in under the new picture before it was rebuilt —
+  // the size change Josh saw. THE NEXT TAB FADES IN on landing, already
+  // placed under its picture ("make the description box fade in").
+  let travelled = false;
+  const sheetEl = () => pswp.element?.querySelector<HTMLElement>(".pswp__vscn-sheet") ?? null;
+  const ownSlideX = () => {
+    const n = pswp.getNumItems();
+    let d = pswp.potentialIndex - pswp.currIndex;
+    if (pswp.canLoop() && n > 0) {
+      d = ((d % n) + n) % n;
+      if (d > n / 2) d -= n;
+    }
+    // getCurrSlideX() is slideWidth × the TARGET position index, which a glide
+    // lowered by d; the tab's own slide stands d positions back.
+    return pswp.mainScroll.getCurrSlideX() + d * pswp.mainScroll.slideWidth;
+  };
+  pswp.on("moveMainScroll", ({ x }) => {
+    const sheet = sheetEl();
+    if (!sheet) return;
+    const dx = x - ownSlideX();
+    if (Math.abs(dx) <= 1) {
+      sheet.style.translate = "";
+      sheet.style.opacity = "";
+      sheet.classList.remove("is-travelling");
+      return;
+    }
+    travelled = true;
+    sheet.classList.add("is-travelling");
+    sheet.style.translate = `${Math.round(dx)}px 0`;
+    sheet.style.opacity = String(Math.max(0, 1 - Math.abs(dx) / (pswp.viewportSize.x * 0.5)));
+  });
+  pswp.on("change", () => {
+    if (!travelled) return;
+    travelled = false;
+    const sheet = sheetEl();
+    if (!sheet) return;
+    place();
+    // Cleared while transitions are still off, and committed (the reflow)
+    // before they come back: otherwise the tab's `translate` transition
+    // carried it in from where the old one left, sliding in from the side.
+    sheet.style.translate = "";
+    sheet.style.opacity = "";
+    void sheet.offsetWidth;
+    sheet.classList.remove("is-travelling");
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      sheet.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 280, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)" });
+    }
+  });
+  return place;
+}
+
+/** Slides the tab from where it stood (`from`, a rect top) to where it is now. */
+function slideFrom(sheet: HTMLElement, from: number | null): void {
+  if (from === null || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const dy = from - sheet.getBoundingClientRect().top;
+  if (Math.abs(dy) < 1) return;
+  sheet.animate([{ translate: `0 ${dy}px` }, { translate: "0 0" }], {
+    duration: 360,
+    easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+  });
 }

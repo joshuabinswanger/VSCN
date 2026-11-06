@@ -268,8 +268,8 @@ try {
     await page.locator(tab("account")).click();
     await page.locator("#btn-logout").click();
     // Sign-out lands on "/", which firebase.json answers with a 302 to
-    // /community since 2026-10-25.
-    await page.waitForURL((url) => url.origin === args.origin && /^\/(de\/?)?(community\/?)?$/.test(url.pathname), { timeout: 20_000 });
+    // /info since 2026-11-05 (/community from 2026-10-25).
+    await page.waitForURL((url) => url.origin === args.origin && /^\/(de\/?)?((community|info)\/?)?$/.test(url.pathname), { timeout: 20_000 });
     await expect(page.locator("#nav-join")).toBeVisible({ timeout: 15_000 });
 
     const home = await page.goto(`${args.origin}/`, { waitUntil: "domcontentloaded" });

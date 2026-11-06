@@ -12,7 +12,7 @@ import type { ComponentProps, HTMLAttributes } from "astro/types";
 import MemberWork from "./MemberWork.astro";
 import MemberCarousel from "./MemberCarousel.astro";
 import { groupCarousels } from "../lib/carousels.ts";
-import { affiliationHref, projectDescription, projectTitle, type ProfileProject } from "../lib/projects.ts";
+import { affiliationHref, projectAnchor, projectDescription, projectTitle, type ProfileProject } from "../lib/projects.ts";
 import { communityWorkTagHref, hostLabel } from "../lib/links.ts";
 import { useTranslations, type Lang } from "../i18n/utils.ts";
 import { splitParagraphs } from "../lib/paragraphs.ts";
@@ -47,7 +47,7 @@ const figure = (w: Work) => ({
 const units = groupCarousels(works, 2);
 ---
 
-<section class:list={["mprof__project", className]} {...rest}>
+<section id={projectAnchor(project.id)} class:list={["mprof__project", className]} {...rest}>
   <div class="mprof__project-head">
     {
       title && (

@@ -597,6 +597,9 @@ const searchIndex: SearchIndex = {
           aria-label={t("community.view.label")}
           hidden
         >
+          <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
+            {t("community.view.grid")}
+          </button>
           <button
             type="button"
             class="view-toggle__btn"
@@ -604,9 +607,6 @@ const searchIndex: SearchIndex = {
             aria-pressed={DEFAULT_VIEW === "pages" ? "true" : "false"}
           >
             {t("community.view.gallery")}
-          </button>
-          <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
-            {t("community.view.grid")}
           </button>
           <button
             type="button"
@@ -749,7 +749,8 @@ const searchIndex: SearchIndex = {
         </div>
         {
           /* THE VIEWS AS TABS, ON A DESKTOP (2026-10-26, Josh's top-bar mock:
-            Portfolios / Images / People in one segmented control). The same
+            Portfolios / Images / People in one segmented control; since
+            2026-11-06 Images / Portfolios / People, Portfolios in the middle). The same
             three buttons as the view menu's panel, so the controller's
             querySelectorAll over .view-toggle__btn presses, reflects and
             navigates them with no new code. The phone keeps the drop-up
@@ -757,6 +758,9 @@ const searchIndex: SearchIndex = {
         }
         <div class="view-seg" role="group" aria-label={t("community.view.label")}>
           <span class="view-seg__thumb" aria-hidden="true"></span>
+          <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
+            {t("community.view.grid")}
+          </button>
           <button
             type="button"
             class="view-toggle__btn"
@@ -764,9 +768,6 @@ const searchIndex: SearchIndex = {
             aria-pressed={DEFAULT_VIEW === "pages" ? "true" : "false"}
           >
             {t("community.view.gallery")}
-          </button>
-          <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
-            {t("community.view.grid")}
           </button>
           <button
             type="button"
@@ -3383,6 +3384,9 @@ const searchIndex: SearchIndex = {
     }
     .community-bar__row {
       gap: 6px;
+      /* Wider than the screen (Sort open on a narrow phone), it spills to
+         both sides alike, staying centred (2026-11-06). */
+      justify-content: center;
     }
     .search-menu {
       order: 1;
@@ -3411,6 +3415,10 @@ const searchIndex: SearchIndex = {
     .community-bar .community-bar__in {
       border-color: transparent;
       background: transparent;
+      /* The island draws nothing, so it may run to the screen's edges: held
+         24px in, it clipped the row with Sort open and pushed it 3px right
+         of the middle (2026-11-06). */
+      max-width: 100vw;
     }
     .community-bar .community-bar__in:not([data-sizing]) {
       overflow: visible;
@@ -3588,14 +3596,40 @@ const searchIndex: SearchIndex = {
     display: none;
   }
 
-  /* NO SHIFT BETWEEN VIEWS (2026-10-28, Josh: "there is still a shift in the
-     buttons after selecting another button (i.e. switching portfolio to
-     images)"). Sort, the wall's alone, used to join the row on Images and
-     leave it elsewhere, so the centred row moved by half a pill each time.
-     It keeps its place now, unseen and out of reach off the wall. */
+  /* THE ROW CENTRED AS A WHOLE (2026-11-06, Josh: "the pill should be
+     center according to its entire width with search and tags and shift
+     when sort comes into view"). Reverses 10-28's NO SHIFT, which kept an
+     empty slot for Sort in every view and so left the row off-centre.
+     Sort now folds to nothing off the wall (its width and the gap before
+     it), and opens on Images; the centred row glides half a circle as it
+     does. */
+  .sort-menu {
+    width: var(--bar-h);
+    overflow: clip;
+    overflow-clip-margin: 3px;
+    transition:
+      width 0.34s cubic-bezier(0.22, 0.61, 0.36, 1),
+      margin 0.34s cubic-bezier(0.22, 0.61, 0.36, 1),
+      opacity 0.2s ease 0.1s,
+      visibility 0s linear 0s;
+  }
   .sort-menu[hidden] {
     display: flex;
+    width: 0;
+    margin-inline-start: calc(-1 * var(--bar-gap, 6px));
+    opacity: 0;
     visibility: hidden;
+    transition:
+      width 0.34s cubic-bezier(0.22, 0.61, 0.36, 1),
+      margin 0.34s cubic-bezier(0.22, 0.61, 0.36, 1),
+      opacity 0.15s ease,
+      visibility 0s linear 0.34s;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sort-menu,
+    .sort-menu[hidden] {
+      transition: none;
+    }
   }
 
   @media (--bp-desktop) {
@@ -3693,10 +3727,9 @@ const searchIndex: SearchIndex = {
   }
 
   /* THE PICKED TAG OVER THE VIEWS (2026-10-30; the markup's note says why).
-     Anchored to the views pill, not the bar: Sort keeps its slot in every
-     view (NO SHIFT BETWEEN VIEWS above), so the views sit half a circle and
-     a gap left of the bar's middle. Without anchor positioning that offset
-     is worked out by hand. Gone while any card is open: the card says the
+     Anchored to the views pill, not the bar: with Sort open (Images) the
+     views sit half a circle and a gap left of the bar's middle. Without
+     anchor positioning that offset is worked out by hand. Gone while any card is open: the card says the
      same thing and grows over this spot. */
   .view-seg {
     anchor-name: --tag-views;
@@ -3705,7 +3738,7 @@ const searchIndex: SearchIndex = {
     position: absolute;
     left: 50%;
     bottom: calc(100% + 8px);
-    translate: calc(-50% - (var(--bar-h) + var(--bar-gap, 6px)) / 2) 0;
+    translate: -50% 0;
     display: flex;
     gap: 6px;
     width: max-content;
@@ -3729,6 +3762,11 @@ const searchIndex: SearchIndex = {
     background: var(--color-dark) !important;
     color: var(--color-bg) !important;
     border-color: var(--color-dark);
+  }
+  @supports not (position-anchor: --a) {
+    .community-bar:has(.sort-menu:not([hidden])) .filter-floats {
+      translate: calc(-50% - (var(--bar-h) + var(--bar-gap, 6px)) / 2) 0;
+    }
   }
   @supports (position-anchor: --a) {
     .filter-floats {

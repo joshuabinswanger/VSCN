@@ -3,7 +3,8 @@ import { getImage } from "astro:assets";
 import { useTranslations } from "../i18n/utils.ts";
 import type { Lang } from "../i18n/utils.ts";
 import { fetchMemberViews } from "../lib/membersBuild.ts";
-import { workCaption } from "../lib/links.ts";
+import { workCaption, memberHref } from "../lib/links.ts";
+import { projectTitle, looseWorksProjectId } from "../lib/projects.ts";
 
 interface Props {
   lang?: Lang;
@@ -13,201 +14,502 @@ const { lang = "en" } = Astro.props;
 const t = useTranslations(lang);
 const portfoliosHref = lang === "de" ? "/de/community" : "/community";
 
-// INFO LEADS INTO THE PORTFOLIOS (2026-10-31, Josh: "update that page so
-// people naturally flow into opening the portfolio page"). The way in is
-// the views switcher in the header (ViewsPill.astro), a strip of the
-// network's own pictures that all open the Portfolios, and a button once the
-// reading is done. The button under the opening lines went the same day
-// (Josh: "remove the first pill on the landing page").
-// ONE MEMBER AT A TIME (2026-11-01, Josh's design file, board 26: "members
-// change on scroll and have a timer"). The strip of six became a carousel:
-// one picture, the member's name under it, a chevron each side. It steps on
-// a timer and as the page scrolls. The guest list is the wall's (hidden
-// works stay off, as on /community): each member's best picture, the best
-// members first, twelve at most.
+// THE INFO PAGE TELLS A STORY AS IT SCROLLS (2026-11-02, Josh: "like a
+// storytelling with smooth scroll and animations"; reworked through
+// 2026-11-04). Every chapter is a screen. A chapter may hold the screen for
+// a few more scroll gestures (data-steps): it is that many screens taller,
+// its frame stays put (sticky), and each gesture reveals its next part
+// (data-step) instead of leaving. When a scroll ends, settle() glides to the
+// nearest stop in the direction moved; on a desktop the wheel eases
+// (smoother()).
+//
+//   1. HERO. "Visuals create knowledge." on arrival, about 70% of the
+//      window's width, centred; the next scroll brings the two sentences
+//      under it in a narrower centred column, the third smaller. The scroll
+//      cue stays while the hero is the chapter on screen.
+//   2. WORKS. One picture at a time, the artist and the project under it:
+//      a plain carousel the visitor swipes (phone) or drags (desktop). No
+//      fades on the pictures.
+//   3. ABOUT. Our mission, How we do that, What we plan: one centred column
+//      per scroll, swapped in place, its points one after the other.
+//   4. PORTFOLIOS. Three buttons, one above the other: the portfolios, the
+//      people, and joining (signed out only).
+//   5. CONTACT. The closing sentence in the middle of the last screen. One
+//      more scroll past it goes on to the portfolios.
+//
+// The layout of 1, 2, 3 and 4 follows Josh's boards of 2026-11-05
+// (Desktop/vscn-split/vscn-landing-story.af, 03.1-03.4; the phone follows).
+//
+// A part is hidden from the first frame (data-story-on is in the markup)
+// and shown once its chapter and step are reached AND the page is on
+// screen: after the first visit's intro and after the hold that follows an
+// in-site link (whenIntroDone, whenHoldDone). Reduced motion or no script:
+// everything shown, plain flow.
+//
+// The carousel's guest list is the wall's (hidden works stay off, as on
+// /community): each member's best picture, the best members first, twelve at
+// most.
 const WALL_MAX = 12;
-const picks = (await fetchMemberViews())
+const members = await fetchMemberViews();
+const picks = members
   .flatMap((m) => {
     const work = m.works.filter((w) => !w.hidden).sort((a, b) => b.score - a.score)[0];
-    return work ? [{ name: m.displayName, work }] : [];
+    if (!work) return [];
+    // Under the name: the work's project, or its own title when it is in
+    // none (the derived "Works" project is a shelf, not a project name).
+    const project = m.projects?.find((p) => p.id === work.projectId && p.id !== looseWorksProjectId(m.id));
+    const line = (project && projectTitle(project, lang)) || workCaption(work, lang);
+    return [{ name: m.displayName, href: memberHref(lang, m.slug), project: line, work }];
   })
   .sort((a, b) => b.work.score - a.work.score)
   .slice(0, WALL_MAX);
 const wall = await Promise.all(
-  picks.map(async ({ name, work }) => ({
+  picks.map(async ({ name, href, project, work }) => ({
     name,
+    href,
+    project,
+    width: work.width,
+    height: work.height,
     alt: workCaption(work, lang) || name,
     rendered: await getImage({
       src: work.url,
       width: work.width,
       height: work.height,
-      widths: [400, 800],
+      widths: [600, 1200],
       format: "webp",
     }),
   }))
 );
 ---
 
-<div class="info-page">
-  <section class="info-section">
-    <p>{t("info.intro")}</p>
-    <p>{t("info.p2")}</p>
+{/* The story is on in the markup itself, so its parts are hidden from the
+    first frame of a full load AND of an in-site arrival (set by a script,
+    they showed, hid and replayed). Without the script, the noscript style
+    shows them; with reduced motion, the media rule at the end of the
+    styles does, and the script switches the story off. */}
+<div class="info-page story" data-story-root data-paints-in data-story-on>
+  <noscript><style>.story [data-in] { opacity: 1 !important; transform: none !important; }</style></noscript>
+  <!-- Josh 11-06: a frame each for the headline; the network with
+       Browse Portfolios; the works; the mission with the way to reach us. -->
+  <!-- 1. HERO: the headline alone -->
+  <section class="story-ch story-ch--hero" data-story-ch="hero">
+    <div class="story-frame">
+      <div class="info-hero">
+        <h1 class="info-hero__title" data-in>{t("info.hero.title")}</h1>
+      </div>
+      <span class="story-cue" aria-hidden="true">{t("info.story.cue")}<span class="story-cue__line"></span></span>
+    </div>
   </section>
 
+  <!-- 1b. THE NETWORK (Josh 11-06): who we are, the name in bold, and the
+       cue on to the portfolios (a key until 11-06; "replace with a scroll
+       indicator"). -->
+  <section class="story-ch story-ch--network" data-story-ch="network">
+    <div class="story-frame">
+      <div class="info-hero__text">
+        <p class="info-hero__sub info-hero__lead" data-in>{t("info.network.pre")}<strong>{t("info.network.name")}</strong>{t("info.network.post")}</p>
+      </div>
+      <span class="story-cue" aria-hidden="true">{t("info.cta.browse")}<span class="story-cue__line"></span></span>
+    </div>
+  </section>
+
+  <!-- 2. WORKS -->
   {
     wall.length > 0 && (
-      <section
-        class="info-section info-wall"
-        aria-roledescription="carousel"
-        aria-label={t("info.wall.heading")}
-        data-info-wall
-      >
-        <div class="info-wall__stage">
-          {wall.length > 1 && (
-            <button type="button" class="info-wall__arrow info-wall__arrow--prev" data-wall-prev aria-label={t("info.wall.prev")}>
-              <span aria-hidden="true" />
-            </button>
-          )}
-          <ul class="info-wall__slides">
-            {wall.map((tile, i) => (
-              <li class="info-wall__slide" data-wall-slide aria-hidden={i === 0 ? undefined : "true"} data-current={i === 0 ? "" : undefined}>
-                <a href={portfoliosHref} class="info-wall__tile" tabindex={i === 0 ? undefined : -1}>
-                  <img
-                    src={tile.rendered.src}
-                    srcset={tile.rendered.srcSet.attribute}
-                    sizes="(max-width: 767px) 74vw, 332px"
-                    alt={tile.alt}
-                    loading={i === 0 ? "eager" : "lazy"}
-                    decoding="async"
-                  />
-                  <span class="info-wall__name">{tile.name}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-          {wall.length > 1 && (
-            <button type="button" class="info-wall__arrow info-wall__arrow--next" data-wall-next aria-label={t("info.wall.next")}>
-              <span aria-hidden="true" />
-            </button>
-          )}
+      <section class="story-ch story-ch--works" data-story-ch="works">
+        <div class="story-frame story-frame--center">
+          <div class="info-wall" aria-roledescription="carousel" aria-label={t("info.wall.heading")} data-info-wall>
+            <div class="info-wall__stage">
+              {wall.length > 1 && (
+                <button type="button" class="info-wall__arrow info-wall__arrow--prev" data-wall-prev aria-label={t("info.wall.prev")}>
+                  <span aria-hidden="true" />
+                </button>
+              )}
+              <ul class="info-wall__slides" data-wall-track>
+                {wall.map((tile, i) => (
+                  <li class="info-wall__slide" data-wall-slide aria-hidden={i === 0 ? undefined : "true"} data-current={i === 0 ? "" : undefined}>
+                    <a href={tile.href} class="info-wall__tile" tabindex={i === 0 ? undefined : -1} draggable="false">
+                      <span class="info-wall__pic" style={`--ar: ${tile.width / tile.height}`}>
+                      <img
+                        src={tile.rendered.src}
+                        srcset={tile.rendered.srcSet.attribute}
+                        sizes="(max-width: 767px) 92vw, 600px"
+                        width={tile.width}
+                        height={tile.height}
+                        alt={tile.alt}
+                        loading={i < 2 ? "eager" : "lazy"}
+                        decoding="async"
+                        draggable="false"
+                      />
+                      {tile.project && <span class="info-wall__project">{tile.project}</span>}
+                      </span>
+                      <span class="info-wall__name">{tile.name}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              {wall.length > 1 && (
+                <button type="button" class="info-wall__arrow info-wall__arrow--next" data-wall-next aria-label={t("info.wall.next")}>
+                  <span aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          </div>
+          <span class="story-cue" aria-hidden="true">{t("info.h2.mission")}<span class="story-cue__line"></span></span>
         </div>
-        <a href={portfoliosHref} class="profile-link info-wall__all">{t("info.wall.all")} →</a>
       </section>
     )
   }
 
-  <section class="info-section">
-    <h2 class="info-heading">{t("info.h2.building")}</h2>
-    <ul class="info-list">
-      <li>{t("info.li.1")}</li>
-      <li>{t("info.li.2")}</li>
-      <li>{t("info.li.3")}</li>
-      <li>{t("info.li.4")}</li>
-    </ul>
+  <!-- 3. MISSION, then reach out. The last screen (Josh 11-06 dropped the
+       next steps): one scroll more goes to the portfolios. -->
+  <section class="story-ch story-ch--about story-ch--mission" data-story-ch="mission" data-onward={portfoliosHref}>
+    <div class="story-frame">
+      <div class="info-about">
+        <div class="info-col" data-col="0">
+          <h2 class="info-heading" data-in>{t("info.h2.mission")}</h2>
+          <ul class="info-list">
+            <li data-in style="--d: 0.15s">{t("info.mission.1")}</li>
+            <li data-in style="--d: 0.30s">{t("info.mission.2")}</li>
+            <li data-in style="--d: 0.45s">{t("info.mission.3")}</li>
+          </ul>
+          <div class="info-cta__row">
+            <!--email_off--><a href="mailto:info@vscn.ch" class="btn-outline info-cta__btn" data-in style="--d: 0.7s">{t("info.cta.contact")}<span aria-hidden="true">→</span></a><!--/email_off-->
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
-  <section class="info-section">
-    <h2 class="info-heading">{t("info.h2.scientists")}</h2>
-    <p>{t("info.p.scientists")}</p>
-    <ul class="info-list">
-      <li>{t("info.li.sci.1")}</li>
-      <li>{t("info.li.sci.2")}</li>
-      <li>{t("info.li.sci.3")}</li>
-    </ul>
-  </section>
-
-  <section class="info-section">
-    <h2 class="info-heading">{t("info.h2.started")}</h2>
-    <p class="info-contact">
-      {t("info.p4")}
-      <!--email_off--><a href="mailto:info@vscn.ch">info@vscn.ch</a><!--/email_off-->
-    </p>
-  </section>
-
-  <section class="info-cta info-cta--end">
-    <a href={portfoliosHref} class="btn-solid info-cta__btn">{t("info.cta.portfolios")}<span aria-hidden="true">→</span></a>
-    <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-outline" id="info-signup-cta" style="display:none;"
-      >{t("signup.cta.info")}</a
-    >
-  </section>
 </div>
 
 <style>
   .info-page {
     width: 100%;
     max-width: 1200px;
+    margin: 0 auto;
+    /* A chapter's height: the scroller's height under the header row. A
+       desktop scrolls .page-wrap, as tall as the shell; a phone scrolls the
+       document, so the small viewport height keeps a chapter from jumping
+       as the toolbars come and go. A phone's chapter is the VISIBLE screen
+       (--shell-h, the visual viewport, Layout.astro): with the small
+       viewport, Safari's collapsed toolbars let the next chapter peek in
+       under the frame. The phone pager moves the page itself, so the
+       toolbars no longer come and go mid-story. */
+    --story-vh: calc(var(--shell-h, 100dvh) - var(--header-h));
+  }
+
+  /* ── CHAPTERS: ONE SCREEN EACH, SNAPPED ─────────────────────────────── */
+  .story-ch {
+    position: relative;
+  }
+  .story-frame {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
-    padding-top: 2rem;
-    padding-bottom: 8rem;
-    margin: 0 auto;
+    justify-content: center;
+    gap: 1.5rem;
+    min-height: var(--story-vh);
+    box-sizing: border-box;
+    padding: 2rem 0;
+  }
+  .story-frame--center {
+    align-items: center;
+    text-align: center;
+  }
 
-    @media (--bp-desktop) {
-      padding-top: 4rem;
+  /* A CHAPTER WITH STEPS holds the screen for that many more gestures: it
+     is (1 + steps) screens tall and its frame stays put meanwhile. On a
+     desktop .page-wrap is padded by the header row, and sticky counts from
+     that padding, so 0; on a phone the document scrolls under the sticky
+     header, so the header's height. */
+  .story[data-story-on] .story-ch[data-steps] {
+    height: calc((1 + var(--steps, 0)) * var(--story-vh));
+  }
+  .story[data-story-on] .story-ch[data-steps] > .story-frame {
+    position: sticky;
+    top: 0;
+    height: var(--story-vh);
+
+    @media (--bp-mobile) {
+      top: var(--header-h);
     }
   }
 
-  .info-section {
-    display: flex;
-    flex-direction: column;
-    padding-bottom: 1rem;
+  /* A part waiting for its moment: hidden until its chapter and step are
+     reached and the page is on screen (data-shown, set once by the script),
+     then rising in after its --d. */
+  .story[data-story-on] [data-in] {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 0.6s ease-out var(--d, 0s),
+      transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0s);
+  }
+  .story[data-story-on] [data-in][data-shown] {
+    opacity: 1;
+    transform: none;
   }
 
+  /* THE VIEWS PILL WAITS FOR ITS CHAPTER. Josh 11-05: the Portfolios /
+     Images / People pill appears only once the portfolios frame (Browse,
+     Find People) comes into view, and stays for the contact frame after it.
+     Without the story (no script, reduced motion) it is simply there. */
+  :global(:root:has(.story) .views-pill) {
+    transition:
+      opacity 0.4s ease,
+      visibility 0s linear 0s;
+  }
+  :global(:root:has(.story[data-story-on]:not([data-current="mission"])) .views-pill) {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 0.25s ease,
+      visibility 0s linear 0.25s;
+  }
+
+  /* Josh 11-05: "dont show the impressum etc." The story ends on its
+     contact frame; the footer links are not part of it. */
+  /* Nor the room kept under the page for that footer: the last frame is
+     the page's end, so the pager has no stray stretch after it. */
+  :global(:root:has(.story) .page-wrap) {
+    padding-bottom: 0 !important;
+  }
+  :global(:root:has(.story) #site-footer),
+  :global(:root:has(.story) .footer-sentinel) {
+    display: none !important;
+  }
+
+  /* ── 1. HERO ─────────────────────────────────────────────────────────── */
+  /* Board 03.1: the headline centred over the window, the sentences in a
+     narrower centred column under it, left-aligned. */
+  .info-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3.5rem;
+
+    @media (--bp-desktop) {
+      gap: 7.5rem;
+    }
+  }
+  /* One line on a desktop, about 70% of the window (type.css): wider than
+     the 900px column, centred over it (a centred flex item overflows both
+     sides alike); two centred lines across a phone. */
+  .info-hero__title {
+    margin: 0;
+    color: var(--color-dark);
+    font-family: "Archivo", sans-serif;
+    text-align: center;
+
+    @media (--bp-desktop) {
+      white-space: nowrap;
+    }
+  }
+  /* The network's name, bolder than the voice's own weight (Josh 11-06). */
+  .story-ch--network strong {
+    font-weight: 800;
+  }
+  .info-hero__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2.25rem;
+    width: min(100%, 48rem);
+    margin: 0 auto;
+
+    @media (--bp-mobile) {
+      gap: 1.5rem;
+    }
+  }
+  /* The two sentences speak the same voice (type.css). */
+  .info-hero__sub,
+  .info-hero__body {
+    margin: 0;
+    color: var(--color-dark);
+  }
+  /* THE CUE: a word and a line that grows down, at the foot of the hero
+     (while the hero is the chapter on screen) and of the last screen (the
+     way on to the portfolios). Only with the story on. */
+  .story-cue {
+    display: none;
+  }
+  .story[data-story-on] .story-cue {
+    transition: opacity 0.4s ease;
+    position: absolute;
+    /* Josh 11-06: lifted 15px. */
+    bottom: calc(5rem + 15px);
+
+    @media (--bp-mobile) {
+      bottom: calc(2.5rem + 15px);
+    }
+    left: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    translate: -50% 0;
+    color: var(--color-muted);
+    font-size: var(--fs-label);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .story[data-story-on]:not([data-current="hero"]) .story-ch--hero .story-cue {
+    opacity: 0;
+  }
+  /* Josh 11-06: an arrow instead of the scroll sign. A shaft with a head,
+     nudging down. */
+  .story-cue__line {
+    position: relative;
+    width: 1px;
+    height: 2rem;
+    background: currentColor;
+    animation: story-cue 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+  .story-cue__line::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-right: 1px solid currentColor;
+    border-bottom: 1px solid currentColor;
+    translate: -50% 0;
+    rotate: 45deg;
+    transform-origin: center;
+  }
+  @keyframes story-cue {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(0.5rem);
+    }
+  }
+
+  /* ── 3. ABOUT: ONE CENTRED COLUMN PER SCROLL ──────────────────────────
+     Boards 03.31-03.33: one column on the screen at a time, in the middle,
+     swapped in place by the next scroll (data-at, written by the script).
+     Without the story they simply stack. */
+  .info-about {
+    display: grid;
+    justify-items: center;
+    gap: 4rem;
+  }
+  /* The board sits the column above the middle of the screen; Josh 11-06:
+     "a bit further up". */
+  .story-ch--about .story-frame {
+    padding-bottom: 14rem;
+
+    @media (--bp-mobile) {
+      padding-bottom: 8rem;
+    }
+  }
+  .info-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+    /* Josh 11-06: "a bit wider" (was 24rem). */
+    width: min(100%, 34rem);
+
+    @media (--bp-mobile) {
+      gap: 2rem;
+    }
+  }
+  .story[data-story-on] .info-about {
+    grid-template-areas: "col";
+  }
+  .story[data-story-on] .info-col {
+    grid-area: col;
+    transition:
+      opacity 0.2s ease,
+      visibility 0s linear 0.2s;
+  }
+  .story[data-story-on] .story-ch--about:not([data-at="0"]) .info-col[data-col="0"],
+  .story[data-story-on] .story-ch--about:not([data-at="1"]) .info-col[data-col="1"],
+  .story[data-story-on] .story-ch--about:not([data-at="2"]) .info-col[data-col="2"] {
+    opacity: 0;
+    visibility: hidden;
+  }
+  .story[data-story-on] .story-ch--about[data-at="0"] .info-col[data-col="0"],
+  .story[data-story-on] .story-ch--about[data-at="1"] .info-col[data-col="1"],
+  .story[data-story-on] .story-ch--about[data-at="2"] .info-col[data-col="2"] {
+    transition: opacity 0.3s ease 0.2s;
+  }
+  /* One line, as on the board, even where it is wider than the points. */
   .info-heading {
+    margin: 0;
+    white-space: nowrap;
     font-family: "Archivo", sans-serif;
     color: var(--color-dark);
   }
-
-  .info-section p {
-    font-size: clamp(var(--fs-100), 1.2vw, 1.08rem);
-    color: #333;
-    line-height: 1.85;
-  }
-
   .info-list {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
-    padding-left: 1.25rem;
-  }
+    /* Josh 11-06: "less gap between points" (was 3rem / 2.4rem). */
+    gap: 1.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
 
+    @media (--bp-mobile) {
+      gap: 1.4rem;
+    }
+  }
+  /* The board's bullet: a round dot, 7px, 18px before the words, on the
+     first line's middle. (Round despite global.css's square ::before.) */
   .info-list li {
-    font-size: clamp(var(--fs-100), 1.2vw, 1.08rem);
+    position: relative;
+    padding-left: 18px;
     color: #333;
-    line-height: 1.6;
+  }
+  .info-list li::before {
+    content: "";
+    position: absolute;
+    top: 0.59em;
+    left: 0;
+    width: 7px;
+    height: 7px;
+    border-radius: 50% !important;
+    background: var(--color-dark);
+  }
+  /* Point by point: each line slides in from the left as well as rising. */
+  /* (:not([data-shown]): Astro's scope attributes make this selector
+     outrank the shown rule, which left every point 24px short.) */
+  .story[data-story-on] .info-list li:not([data-shown]) {
+    transform: translateX(-24px);
   }
 
-  .info-contact {
-    display: block;
-  }
-
-  .info-contact a {
-    color: var(--color-dark);
-    border-bottom: 0;
-    font-weight: 600;
-    text-decoration: none;
-    transition: opacity 0.15s;
-  }
-
-  .info-contact a:hover,
-  .info-contact a:focus-visible {
-    opacity: 0.5;
-  }
-
-  .info-cta {
+  /* ── THE WAYS IN: a row of buttons (Browse Portfolios under the network,
+     Reach out under the mission). */
+  .info-cta__row {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-  }
-  .info-cta--end {
-    padding-top: 3.5rem;
+    gap: 1rem;
+    margin-top: 1rem;
   }
   .info-cta__btn {
     display: inline-flex;
+    justify-content: center;
     align-items: center;
     gap: 0.6em;
+    box-sizing: border-box;
+    min-width: 11rem;
+    white-space: nowrap;
+
+    @media (--bp-mobile) {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+  }
+  .info-cta__row:has(> :only-child) .info-cta__btn {
+    flex: 0 0 auto;
+
+    @media (--bp-mobile) {
+      min-width: 11rem;
+    }
   }
   .info-cta__btn span {
     transition: translate 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -216,85 +518,162 @@ const wall = await Promise.all(
     translate: 4px 0;
   }
 
-  /* THE CAROUSEL (board 26 and the phone's Info): one 4:5 picture in the
-     middle of the column, 332px on a desktop and three quarters of a
-     phone's width, with the portfolio card's chevrons standing just outside
-     its edges. The stage is a size container, so the chevrons can stand at
-     the picture's half height (cqw) whatever its width. */
+  /* THE NETWORK: its one sentence across a wider measure (Josh 11-06: "give
+     the second sentence more space"), and its cue only while it is on screen. */
+  .story-ch--network .info-hero__text {
+    width: min(100%, 62rem);
+  }
+  /* Josh 11-06: the Browse Portfolios cue "a little bit more to the top". */
+  .story[data-story-on] .story-ch--network .story-cue {
+    bottom: calc(8rem + 15px);
+
+    @media (--bp-mobile) {
+      bottom: calc(5rem + 15px);
+    }
+  }
+  .story[data-story-on]:not([data-current="network"]) .story-ch--network .story-cue {
+    opacity: 0;
+  }
+
+  /* THE WORKS CUE: the arrow, under the next frame's word (OUR MISSION), at the foot of
+     the works frame while that frame is on screen. */
+  /* THE NAME STANDS ON THE CUE (2026-11-06, Josh: "the name should be
+     fixed above the scroll indicator"). The wall fills its frame down to a
+     line just above OUR MISSION; every slide's name sits on that line, the
+     same place whichever picture is up, and the picture with its
+     description is centred in the room above. The foot is the cue's
+     bottom, its height (~64px) and a gap. */
+  .story-ch--works .story-frame {
+    padding-bottom: calc(1.5rem + 15px + 82px);
+
+    @media (--bp-mobile) {
+      padding-bottom: calc(2.5rem + 15px + 82px);
+    }
+  }
+  .story-ch--works .info-wall {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .story-ch--works .info-wall__stage {
+    flex: 1;
+    display: flex;
+  }
+  .story-ch--works .info-wall__slides {
+    flex: 1;
+  }
+  .story[data-story-on] .story-ch--works .story-cue {
+    @media (--bp-desktop) {
+      bottom: calc(1.5rem + 15px);
+    }
+  }
+  .story[data-story-on]:not([data-current="works"]) .story-ch--works .story-cue {
+    opacity: 0;
+  }
+
+  /* ── 2. WORKS: ONE PICTURE AT A TIME ────────────────────────────────
+     A row the visitor scrolls sideways, one slide its full width, snapped
+     to the middle. The picture keeps its own shape at one height (the
+     screen's, less the words under it), the artist and the project under
+     it. No fades: the picture is simply there (Josh 11-04). */
+  .story-ch--works {
+    --pic-h: min(calc(var(--story-vh) - 24rem), 560px);
+  }
+  .info-wall {
+    width: 100%;
+  }
   .info-wall__stage {
-    --wall-gap: clamp(6px, 1.7vw, 25px);
     position: relative;
-    /* On a phone the chevrons stand in the page's side margin, as drawn. */
-    width: min(25.5rem, 74vw);
-    margin: 2.5rem auto 0;
-    container-type: inline-size;
+    width: min(100%, 760px);
+    margin: 0 auto;
   }
   .info-wall__slides {
-    display: grid;
+    display: flex;
     margin: 0;
     padding: 0;
     list-style: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    cursor: grab;
   }
-  /* Every slide in the one cell; the current one shows, the rest wait
-     faded out underneath (their pictures load while they wait). */
+  .info-wall__slides::-webkit-scrollbar {
+    display: none;
+  }
+  .info-wall__slides[data-dragging] {
+    scroll-snap-type: none;
+    cursor: grabbing;
+  }
+  /* Pictures differ in shape; each card (picture, name, project) sits in
+     the middle of the row, so a wide picture is not left standing at the
+     bottom of a portrait one's height (Josh 11-05: "weirdly aligned"). */
   .info-wall__slide {
-    grid-area: 1 / 1;
-    opacity: 0;
-    visibility: hidden;
-    transition:
-      opacity 0.6s ease,
-      visibility 0s 0.6s;
-  }
-  .info-wall__slide[data-current] {
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 0.6s ease;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .info-wall__slide,
-    .info-wall__slide[data-current] {
-      transition: none;
-    }
+    display: flex;
+    flex: 0 0 100%;
+    justify-content: center;
+    align-items: stretch;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
   }
   .info-wall__tile {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    align-items: center;
+    width: 100%;
     color: var(--color-dark);
     text-decoration: none;
+    -webkit-user-drag: none;
+  }
+  /* The picture and its description, centred in the room above the name. */
+  .info-wall__pic {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
   }
   .info-wall__tile img {
     display: block;
-    width: 100%;
-    aspect-ratio: 4 / 5;
-    object-fit: cover;
+    /* As wide as its shape allows at --pic-h, never past the slide; the
+       height follows from the width attributes' ratio. */
+    width: min(100%, calc(var(--pic-h) * var(--ar, 0.8)));
+    height: auto;
     border-radius: var(--radius-sm);
-    background: var(--color-border);
-    transition: opacity 0.2s ease;
+    user-select: none;
   }
-  .info-wall__tile:hover img,
-  .info-wall__tile:focus-visible img {
-    opacity: 0.85;
-  }
+  /* Board 03.2 had the name large, the project small under it; Josh 11-06
+     reversed it: the description right under the picture and no wider than
+     it, the name below on the cue's line. */
   .info-wall__name {
+    margin-top: 10px;
     color: var(--color-dark);
   }
-  /* The card's arrows (communityCard.css): a strip the picture's height
-     beside each edge, a stroked chevron in it, muted until pointed at. */
+  .info-wall__project {
+    box-sizing: border-box;
+    max-width: min(100%, calc(var(--pic-h) * var(--ar, 0.8)));
+    margin-top: 4px;
+    color: var(--color-muted);
+  }
+  /* The card's arrows (communityCard.css): a stroked chevron beside each
+     edge of the stage, muted until pointed at. */
   .info-wall__arrow {
     position: absolute;
-    top: 0;
-    z-index: 1;
+    top: calc(var(--pic-h) / 2);
+    z-index: 2;
     display: grid;
     place-items: center;
     width: 2.5rem;
-    height: 125cqw;
+    height: 4rem;
     padding: 0;
     border: 0;
     background: none;
     color: var(--color-dark);
     opacity: 0.35;
     cursor: pointer;
+    translate: 0 -50%;
     transition: opacity 150ms ease;
   }
   .info-wall__arrow:hover,
@@ -302,10 +681,10 @@ const wall = await Promise.all(
     opacity: 1;
   }
   .info-wall__arrow--prev {
-    right: calc(100% + var(--wall-gap));
+    right: 100%;
   }
   .info-wall__arrow--next {
-    left: calc(100% + var(--wall-gap));
+    left: 100%;
   }
   .info-wall__arrow span {
     display: block;
@@ -320,17 +699,67 @@ const wall = await Promise.all(
   .info-wall__arrow--next span {
     transform: translate(-0.05rem, 0) rotate(45deg);
   }
-  .info-wall__all {
-    align-self: center;
-    margin-top: 1.5rem;
-    color: var(--color-dark);
-    text-decoration: none;
+
+  @media (prefers-reduced-motion: reduce) {
+    .story[data-story-on] [data-in] {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+    .story-cue__line {
+      animation: none;
+    }
+  }
+
+  /* PHONE, ALL FRAMES ABOUT A TENTH OF A SCREEN HIGHER (2026-11-06, Josh:
+     "the text and the cards ... a bit more to the top on mobile, maybe like
+     10 view heights up"). A centred frame moves up by half what its foot
+     gains, so the foot gains a fifth. The works frame is placed from the
+     top instead: its picture fills most of a small screen, so it rises by
+     that tenth only as far as the header lets it. */
+  @media (--bp-mobile) {
+    .story-ch .story-frame {
+      padding-bottom: calc(2rem + var(--story-vh) * 0.2);
+    }
+    .story-ch--about .story-frame {
+      padding-bottom: calc(8rem + var(--story-vh) * 0.2);
+    }
+    .story-ch--works .story-frame {
+      padding-top: 1rem;
+      padding-bottom: calc(2.5rem + 15px + 82px);
+    }
+    /* Josh 11-06: "a bit more horizontal padding" round the mission. */
+    .story-ch--mission .info-col {
+      box-sizing: border-box;
+      padding: 0 1.5rem;
+    }
+  }
+
+  /* PHONE: the row runs edge to edge, the picture at the screen's width
+     less the gutters, and the arrows give way to the finger. */
+  @media (--bp-mobile) {
+    .story-ch--works {
+      --pic-h: min(calc(var(--story-vh) - 19rem), 110vw);
+    }
+    .info-wall__stage {
+      width: 100vw;
+      margin: 0 0 0 calc(50% - 50vw);
+    }
+    .info-wall__slide {
+      box-sizing: border-box;
+      padding: 0 16px;
+    }
+    .info-wall__arrow {
+      display: none;
+    }
   }
 </style>
 
 <script>
   import { watchAuth } from "../lib/auth.ts";
+  import { navigate } from "astro:transitions/client";
   import { pageLifetime } from "../lib/pageLifecycle.ts";
+  import { whenHoldDone, whenIntroDone } from "../lib/entrance.ts";
 
   document.addEventListener("astro:page-load", () => {
     const cta = document.getElementById("info-signup-cta");
@@ -342,30 +771,55 @@ const wall = await Promise.all(
     });
   });
 
-  // THE CAROUSEL STEPS ON ITS OWN (2026-11-01, Josh's design file: "members
-  // change on scroll and have a timer"). While it is on screen: a step every
-  // few seconds, and a step for every stretch of scrolling (down = next,
-  // up = previous). Pointing at it or focusing it holds the timer; the
-  // chevrons step at once and start the timer over. No timer for a visitor
-  // who asks for reduced motion.
-  const STEP_MS = 4500;
-  const SCROLL_STEP_PX = 240;
+  // ── THE CAROUSEL ──────────────────────────────────────────────────────
+  // A native sideways scroll does the work (touch, trackpad, shift-wheel);
+  // the script marks the picture in the middle, lets a mouse drag the row,
+  // and pages it from the chevrons, round from the last back to the first.
+  // Josh 11-05: the row turns by itself while the works frame is the one on
+  // screen, one picture every AUTO_MS; a visitor moving it (finger, mouse,
+  // arrows) pauses that for IDLE_MS and puts the swipe hint away.
+  const AUTO_MS = 3500;
+  // Josh 11-06: the first turn comes about 1.5 s after the frame has come to
+  // rest. "Arrived" is when the frame becomes the current one, mid swipe,
+  // a few tenths before it rests; measured 11-06 on a phone swipe, this
+  // lands 1.4 to 1.6 s after the rest.
+  const FIRST_MS = 1500;
+  const IDLE_MS = 8000;
 
-  document.addEventListener("astro:page-load", () => {
-    const wall = document.querySelector<HTMLElement>("[data-info-wall]");
-    const slides = wall ? Array.from(wall.querySelectorAll<HTMLElement>("[data-wall-slide]")) : [];
-    if (!wall || slides.length < 2) return;
-    const signal = pageLifetime();
-    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let at = 0;
-    let timer = 0;
-    let held = false;
-    let seen = false;
-
-    const show = (i: number) => {
-      at = (i + slides.length) % slides.length;
-      slides.forEach((slide, k) => {
-        const on = k === at;
+  function carousel(root: HTMLElement, wall: HTMLElement, track: HTMLElement, slides: HTMLElement[], signal: AbortSignal) {
+    const n = slides.length;
+    let touchedAt = 0;
+    const touch = () => {
+      touchedAt = Date.now();
+    };
+    for (const type of ["pointerdown", "touchstart", "wheel"] as const)
+      wall.addEventListener(type, (e) => { if (type !== "wheel" || Math.abs((e as WheelEvent).deltaX) > Math.abs((e as WheelEvent).deltaY)) touch(); }, { passive: true, signal });
+    // Counted from arriving on the frame, the last turn, or the end of the
+    // pause after a touch, whichever is latest.
+    let arrived = 0;
+    let turned = 0;
+    const auto = window.setInterval(() => {
+      const now = Date.now();
+      if (root.dataset.current !== "works" || document.hidden) {
+        arrived = 0;
+        return;
+      }
+      if (!arrived) arrived = now;
+      const wait = turned < arrived ? FIRST_MS : AUTO_MS;
+      const since = Math.max(arrived, turned, touchedAt ? touchedAt + IDLE_MS - wait : 0);
+      if (now - since < wait) return;
+      turned = now;
+      go(at + 1);
+    }, 250);
+    signal.addEventListener("abort", () => clearInterval(auto), { once: true });
+    let at = -1;
+    const nearest = () => Math.min(n - 1, Math.max(0, Math.round(track.scrollLeft / track.clientWidth)));
+    const mark = () => {
+      const k = nearest();
+      if (k === at) return;
+      at = k;
+      slides.forEach((slide, i) => {
+        const on = i === k;
         slide.toggleAttribute("data-current", on);
         const link = slide.querySelector("a");
         if (on) {
@@ -377,50 +831,556 @@ const wall = await Promise.all(
         }
       });
     };
-    const stop = () => {
-      clearInterval(timer);
-      timer = 0;
+    const go = (i: number) => {
+      track.scrollTo({ left: (((i % n) + n) % n) * track.clientWidth, behavior: "smooth" });
     };
-    const start = () => {
-      stop();
-      if (still || held || !seen || document.hidden) return;
-      timer = window.setInterval(() => show(at + 1), STEP_MS);
+    let frame = 0;
+    track.addEventListener(
+      "scroll",
+      () => {
+        if (!frame)
+          frame = requestAnimationFrame(() => {
+            frame = 0;
+            mark();
+          });
+      },
+      { passive: true, signal }
+    );
+    wall.querySelector("[data-wall-prev]")?.addEventListener("click", () => go(at - 1), { signal });
+    wall.querySelector("[data-wall-next]")?.addEventListener("click", () => go(at + 1), { signal });
+
+    // A mouse drags the row; a drag of more than a few pixels is not a
+    // click, and lands on the next picture in its direction.
+    let startX = 0;
+    let startLeft = 0;
+    let dragging = false;
+    let moved = false;
+    track.addEventListener(
+      "pointerdown",
+      (e) => {
+        if (e.pointerType !== "mouse" || e.button !== 0) return;
+        dragging = true;
+        moved = false;
+        startX = e.clientX;
+        startLeft = track.scrollLeft;
+      },
+      { signal }
+    );
+    window.addEventListener(
+      "pointermove",
+      (e) => {
+        if (!dragging) return;
+        const dx = e.clientX - startX;
+        if (!moved && Math.abs(dx) > 5) {
+          moved = true;
+          track.setAttribute("data-dragging", "");
+        }
+        if (moved) track.scrollLeft = startLeft - dx;
+      },
+      { signal }
+    );
+    const drop = (e: PointerEvent) => {
+      if (!dragging) return;
+      dragging = false;
+      if (!moved) return;
+      track.removeAttribute("data-dragging");
+      const dx = e.clientX - startX;
+      const from = Math.round(startLeft / track.clientWidth);
+      const to = Math.abs(dx) > track.clientWidth * 0.12 ? from - Math.sign(dx) : from;
+      track.scrollTo({ left: Math.min(n - 1, Math.max(0, to)) * track.clientWidth, behavior: "smooth" });
     };
+    window.addEventListener("pointerup", drop, { signal });
+    window.addEventListener("pointercancel", drop, { signal });
+    // The click that ends a drag does not open the member.
+    track.addEventListener(
+      "click",
+      (e) => {
+        if (moved) {
+          e.preventDefault();
+          moved = false;
+        }
+      },
+      { capture: true, signal }
+    );
+    window.addEventListener(
+      "resize",
+      () => track.scrollTo({ left: Math.max(0, at) * track.clientWidth, behavior: "instant" as ScrollBehavior }),
+      { passive: true, signal }
+    );
+    signal.addEventListener("abort", () => cancelAnimationFrame(frame), { once: true });
+    mark();
+  }
 
-    wall.querySelector("[data-wall-prev]")?.addEventListener("click", () => (show(at - 1), start()), { signal });
-    wall.querySelector("[data-wall-next]")?.addEventListener("click", () => (show(at + 1), start()), { signal });
-    const hold = (on: boolean) => () => ((held = on), start());
-    wall.addEventListener("pointerenter", hold(true), { signal });
-    wall.addEventListener("pointerleave", hold(false), { signal });
-    wall.addEventListener("focusin", hold(true), { signal });
-    wall.addEventListener("focusout", hold(false), { signal });
-    document.addEventListener("visibilitychange", start, { signal });
+  // (The smoother of 11-04, which eased every wheel event, gave way on
+  // 11-06 to the wheel pager below: one gesture, one frame.)
+  type Smoother = { to: (y: number) => void; busy: () => boolean };
 
-    const io = new IntersectionObserver(([entry]) => {
-      seen = entry.isIntersecting;
-      start();
-    });
-    io.observe(wall);
-    signal.addEventListener("abort", () => (io.disconnect(), stop()), { once: true });
+  // ── CHAPTERS AND STOPS ────────────────────────────────────────────────
+  // The site's phone breakpoint, spelled out (custom-media.css, --bp-mobile).
+  const PHONE = "(width <= 767px), (pointer: coarse) and (height <= 500px)";
+  type Chapter ={ el: HTMLElement; key: string; steps: number; frame: HTMLElement; parts: { el: HTMLElement; step: number }[] };
 
-    // .page-wrap scrolls on a desktop, the document on a phone (CLAUDE.md,
-    // "Layout and scrolling"): listen to both, count only the one that moved.
-    const wrap = document.querySelector<HTMLElement>(".page-wrap");
-    const pos = () => (wrap?.scrollTop ?? 0) + window.scrollY;
-    let last = pos();
-    let travel = 0;
-    const onScroll = () => {
-      const now = pos();
-      if (seen) travel += now - last;
-      last = now;
-      while (Math.abs(travel) >= SCROLL_STEP_PX) {
-        const dir = Math.sign(travel);
-        travel -= dir * SCROLL_STEP_PX;
-        show(at + dir);
-        start();
+  function chaptersOf(root: HTMLElement): Chapter[] {
+    return Array.from(root.querySelectorAll<HTMLElement>("[data-story-ch]")).map((el) => ({
+      el,
+      key: el.dataset.storyCh || "",
+      steps: Number(el.dataset.steps || 0),
+      frame: el.querySelector<HTMLElement>(".story-frame") ?? el,
+      parts: Array.from(el.querySelectorAll<HTMLElement>("[data-in]")).map((p) => ({ el: p, step: Number(p.dataset.step || 0) })),
+    }));
+  }
+  const phone = () => matchMedia(PHONE).matches;
+  const scrollerEl = () => (phone() ? document.scrollingElement : document.querySelector(".page-wrap")) as HTMLElement | null;
+  // Where a chapter's top comes to rest: just under the header row.
+  const restLine = (root: HTMLElement) => parseFloat(getComputedStyle(root).getPropertyValue("--header-h")) || (phone() ? 48 : 56);
+
+  // ── THE STORY ─────────────────────────────────────────────────────────
+  // From the scroll position: which step each chapter is at (data-at),
+  // which chapter is on screen (data-current on the root), and which parts
+  // to show. A part stays shown until its frame is out of sight. Waits until the page is on screen.
+  // Josh 11-05: OUR MISSION was "just already there": with a band of 12% of
+  // a screen, the parts started rising while the glide still had a quarter
+  // second to go, and the motion hid their entrance. Now only a frame that
+  // has really stopped (within a few px) plays its parts.
+  const REST_PX = 4;
+
+  async function story(root: HTMLElement, chapters: Chapter[], signal: AbortSignal) {
+    await whenIntroDone();
+    await whenHoldDone();
+    if (signal.aborted) return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const vh = window.innerHeight;
+      const line = restLine(root);
+      for (const c of chapters) {
+        const r = c.el.getBoundingClientRect();
+        const fh = c.frame.offsetHeight || vh;
+        const at = Math.min(c.steps, Math.max(0, Math.round((line - r.top) / fh)));
+        if (c.el.dataset.at !== String(at)) c.el.dataset.at = String(at);
+        // Josh 11-05: "the frames should always stop and animate in when
+        // visible". A part waits until its frame has (nearly) come to rest
+        // under the header, not while it is still sliding through; at the
+        // page's end, where the last frame may not reach the line, being
+        // on screen is enough.
+        const off = line - r.top - at * fh;
+        const atEnd = (scrollerEl()?.scrollTop ?? 0) >= (scrollerEl()?.scrollHeight ?? 0) - (scrollerEl()?.clientHeight ?? 0) - 2;
+        if (Math.abs(off) < REST_PX || (atEnd && r.top < vh * 0.6 && r.bottom > vh * 0.4)) {
+          for (const part of c.parts) if (part.step <= at) part.el.setAttribute("data-shown", "");
+        } else if (r.bottom <= line + 1 || r.top >= vh - 1) {
+          // Josh 11-06: "on scrolling back show animation too". A frame
+          // wholly out of sight puts its parts away again, so coming back
+          // to it, either way, plays them in once more.
+          for (const part of c.parts) part.el.removeAttribute("data-shown");
+        }
+        if (r.top <= vh * 0.5 && r.bottom > vh * 0.5) root.dataset.current = c.key;
       }
     };
-    wrap?.addEventListener("scroll", onScroll, { passive: true, signal });
+    const request = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    document.querySelector(".page-wrap")?.addEventListener("scroll", request, { passive: true, signal });
+    window.addEventListener("scroll", request, { passive: true, signal });
+    window.addEventListener("resize", request, { passive: true, signal });
+    signal.addEventListener("abort", () => cancelAnimationFrame(frame), { once: true });
+    update();
+  }
+
+  // ── THE WHEEL PAGER (desktop) ─────────────────────────────────────────
+  // Josh 11-06: "scroll past with one scroll for each frame". A wheel notch
+  // or a trackpad swipe moves exactly one frame, gliding there; the rest of
+  // that gesture (a trackpad's momentum tail, more notches in a quick spin)
+  // is swallowed until the wheel has been quiet for WHEEL_QUIET_MS, or a
+  // clearly new push arrives after the glide (the deltas jump up again).
+  // Past the last frame's stop the wheel scrolls freely. A sideways gesture
+  // is left to the carousel; keys and the scrollbar stay native (the settle
+  // still lands those on a frame).
+  const WHEEL_MS = 650;
+  const WHEEL_QUIET_MS = 180;
+  const WHEEL_MIN = 12;
+
+  function wheelPager(root: HTMLElement, chapters: Chapter[], wrap: HTMLElement, signal: AbortSignal) {
+    const before = wrap.style.scrollBehavior;
+    wrap.style.scrollBehavior = "auto";
+    let raf = 0;
+    let target = -1;
+    let armed = true;
+    let quiet = 0;
+    let gl0 = 0;
+    let lastAbs = 0;
+    let push = 0;
+    const max = () => wrap.scrollHeight - wrap.clientHeight;
+    const stops = () => {
+      const base = wrap.getBoundingClientRect().top;
+      const line = restLine(root);
+      const out: number[] = [];
+      for (const c of chapters) {
+        const top = Math.max(0, c.el.getBoundingClientRect().top - base + wrap.scrollTop - line);
+        const fh = c.frame.offsetHeight || wrap.clientHeight;
+        for (let i = 0; i <= c.steps; i++) out.push(Math.min(max(), top + i * fh));
+      }
+      return out.filter((y, i, a) => i === 0 || y > a[i - 1] + 1);
+    };
+    const glide = (to: number) => {
+      cancelAnimationFrame(raf);
+      target = to;
+      const a = wrap.scrollTop;
+      const t0 = (gl0 = performance.now());
+      const tick = (now: number) => {
+        const k = Math.min(1, (now - t0) / WHEEL_MS);
+        const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+        wrap.scrollTop = a + (to - a) * e;
+        if (k < 1) raf = requestAnimationFrame(tick);
+        else {
+          raf = 0;
+          target = -1;
+        }
+      };
+      raf = requestAnimationFrame(tick);
+    };
+    wrap.addEventListener(
+      "wheel",
+      (e) => {
+        if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+        e.preventDefault();
+        const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? wrap.clientHeight : 1;
+        const dy = e.deltaY * unit;
+        const abs = Math.abs(dy);
+        // A new push inside a momentum tail: the deltas rise again.
+        if (!armed && !raf && performance.now() - gl0 > WHEEL_MS && abs > WHEEL_MIN * 2 && abs > lastAbs * 1.6) armed = true;
+        lastAbs = abs;
+        clearTimeout(quiet);
+        quiet = window.setTimeout(() => {
+          armed = true;
+          push = 0;
+          lastAbs = 0;
+        }, WHEEL_QUIET_MS);
+        const list = stops();
+        const end = list[list.length - 1];
+        const y = raf ? target : wrap.scrollTop;
+        // Below the last frame: free, until the wheel heads back above it.
+        if (y > end + 2 && !raf) {
+          const to = Math.min(max(), y + dy);
+          if (to >= end) {
+            wrap.scrollTop = to;
+            return;
+          }
+        }
+        if (!armed) return;
+        push += dy;
+        if (Math.abs(push) < WHEEL_MIN) return;
+        const dir = Math.sign(push);
+        push = 0;
+        armed = false;
+        const at = list.reduce((b, v, i) => (Math.abs(v - y) < Math.abs(list[b] - y) ? i : b), 0);
+        const next = at + dir;
+        if (next < 0) return;
+        if (next >= list.length) {
+          // On from the last frame: into the free end, if there is one.
+          if (max() > end + 2) wrap.scrollTop = Math.min(max(), wrap.scrollTop + dy);
+          return;
+        }
+        glide(list[next]);
+      },
+      { passive: false, signal }
+    );
+    signal.addEventListener(
+      "abort",
+      () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(quiet);
+        wrap.style.scrollBehavior = before;
+      },
+      { once: true }
+    );
+  }
+
+  // ── THE SETTLE ────────────────────────────────────────────────────────
+  // When a scroll has ended (no scroll event for a moment, no finger on the
+  // glass, the wheel's easing done) the scroller glides to a stop: every
+  // chapter's top, and one more screen down per step. Moved only a little
+  // from the stop it rested on: back to it. More: on to the nearest stop in
+  // that direction. A chapter whose content is taller than its stops lets
+  // the visitor read through it; the page's end is left alone.
+  const SETTLE_MS = 140;
+  const NUDGE = 0.08;
+
+  function settle(root: HTMLElement, chapters: Chapter[], signal: AbortSignal, smooth: Smoother | null) {
+    let rest = 0;
+    let gliding = false;
+    let touching = false;
+    let timer = 0;
+    const stopsOf = (s: HTMLElement) => {
+      const base = s === document.scrollingElement ? 0 : s.getBoundingClientRect().top;
+      const line = restLine(root);
+      const out: { y: number; free: number }[] = [];
+      for (const c of chapters) {
+        const top = Math.max(0, c.el.getBoundingClientRect().top - base + s.scrollTop - line);
+        const fh = c.frame.offsetHeight || s.clientHeight;
+        for (let i = 0; i <= c.steps; i++) out.push({ y: top + i * fh, free: 0 });
+        // Content taller than its screens: free reading to its end.
+        const extra = c.el.offsetHeight - (c.steps + 1) * fh;
+        if (extra > fh * 0.05) out[out.length - 1].free = extra;
+      }
+      return out;
+    };
+    const run = () => {
+      const s = scrollerEl();
+      if (!s || touching || smooth?.busy()) return;
+      const y = s.scrollTop;
+      const stops = stopsOf(s);
+      const vh = s.clientHeight;
+      if (gliding) {
+        gliding = false;
+        rest = stops.reduce((best, st, i) => (Math.abs(st.y - y) < Math.abs(stops[best].y - y) ? i : best), 0);
+        return;
+      }
+      const max = s.scrollHeight - vh;
+      const last = stops.length - 1;
+      if (y > stops[last].y + 4 || y >= max - 2) return;
+      const inside = stops.findIndex((st) => st.free > 0 && y >= st.y - 2 && y <= st.y + st.free + 2);
+      if (inside >= 0) {
+        rest = inside;
+        return;
+      }
+      if (rest > last) rest = last;
+      const delta = y - stops[rest].y;
+      let to = rest;
+      if (Math.abs(delta) >= vh * NUDGE) {
+        const ahead = stops.map((_, i) => i).filter((i) => (delta > 0 ? stops[i].y > stops[rest].y : stops[i].y < stops[rest].y));
+        if (ahead.length) to = ahead.reduce((best, i) => (Math.abs(stops[i].y - y) < Math.abs(stops[best].y - y) ? i : best), ahead[0]);
+      }
+      rest = to;
+      if (Math.abs(stops[to].y - y) < 2) return;
+      gliding = true;
+      if (smooth && s !== document.scrollingElement) smooth.to(stops[to].y);
+      else s.scrollTo({ top: stops[to].y, behavior: "smooth" });
+    };
+    const onScroll = () => {
+      clearTimeout(timer);
+      timer = window.setTimeout(run, SETTLE_MS);
+    };
+    document.querySelector(".page-wrap")?.addEventListener("scroll", onScroll, { passive: true, signal });
     window.addEventListener("scroll", onScroll, { passive: true, signal });
+    window.addEventListener("touchstart", () => (touching = true), { passive: true, signal });
+    const lift = () => {
+      touching = false;
+      onScroll();
+    };
+    window.addEventListener("touchend", lift, { passive: true, signal });
+    window.addEventListener("touchcancel", lift, { passive: true, signal });
+    signal.addEventListener("abort", () => clearTimeout(timer), { once: true });
+  }
+
+  // ── THE PHONE PAGER ───────────────────────────────────────────────────
+  // Josh 11-05 (iPhone recording): one flick ran the whole story by, the
+  // momentum sailing past every stop before the settle could act. On a phone
+  // the page follows the finger itself: a vertical drag moves it 1:1 (native
+  // scrolling is held off with preventDefault, so Safari's momentum and
+  // toolbars stay out of it), and the release glides to exactly ONE stop on
+  // in the direction moved, or back if the move was small and slow. Where
+  // content runs past its stops (the page's end, under the last frame) the
+  // release keeps a little momentum inside that stretch. A sideways drag is
+  // left to the carousel; a tap is never touched.
+  const PAGE_MS = 520;
+  const FLICK = 0.35; // px/ms: a quick flick counts as a full move
+
+  function pager(root: HTMLElement, chapters: Chapter[], signal: AbortSignal) {
+    const s = document.scrollingElement as HTMLElement;
+    let raf = 0;
+    let startX = 0;
+    let startY = 0;
+    let startTop = 0;
+    let axis: "x" | "y" | null = null;
+    let from = 0;
+    let samples: { t: number; y: number }[] = [];
+    const max = () => s.scrollHeight - innerHeight;
+    const stops = () => {
+      const line = restLine(root);
+      const out: number[] = [];
+      for (const c of chapters) {
+        const top = Math.max(0, c.el.getBoundingClientRect().top + s.scrollTop - line);
+        const fh = c.frame.offsetHeight || innerHeight;
+        for (let i = 0; i <= c.steps; i++) out.push(Math.min(max(), top + i * fh));
+      }
+      return out;
+    };
+    const nearest = (list: number[], y: number) => list.reduce((b, v, i) => (Math.abs(v - y) < Math.abs(list[b] - y) ? i : b), 0);
+    const stop = () => {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    };
+    const glide = (to: number, ms = PAGE_MS) => {
+      stop();
+      const a = s.scrollTop;
+      const t0 = performance.now();
+      const tick = (now: number) => {
+        const k = Math.min(1, (now - t0) / ms);
+        const e = 1 - Math.pow(1 - k, 3);
+        window.scrollTo(0, a + (to - a) * e);
+        raf = k < 1 ? requestAnimationFrame(tick) : 0;
+      };
+      raf = requestAnimationFrame(tick);
+    };
+    const mine = (e: TouchEvent) => e.touches.length === 1 && !!(e.target as Element | null)?.closest?.(".page-wrap");
+    document.addEventListener(
+      "touchstart",
+      (e) => {
+        if (!mine(e)) return;
+        stop();
+        axis = null;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        startTop = s.scrollTop;
+        from = nearest(stops(), startTop);
+        samples = [{ t: e.timeStamp, y: startY }];
+      },
+      { passive: true, signal }
+    );
+    document.addEventListener(
+      "touchmove",
+      (e) => {
+        if (!mine(e) || axis === "x") return;
+        const x = e.touches[0].clientX;
+        const y = e.touches[0].clientY;
+        if (!axis) {
+          if (Math.abs(x - startX) < 6 && Math.abs(y - startY) < 6) return;
+          axis = Math.abs(x - startX) > Math.abs(y - startY) ? "x" : "y";
+          if (axis === "x") return;
+        }
+        e.preventDefault();
+        window.scrollTo(0, Math.max(0, Math.min(max(), startTop + startY - y)));
+        samples.push({ t: e.timeStamp, y });
+        if (samples.length > 6) samples.shift();
+      },
+      { passive: false, signal }
+    );
+    const release = () => {
+      if (axis !== "y") return;
+      axis = null;
+      const first = samples[0];
+      const last = samples[samples.length - 1];
+      const dt = last.t - first.t;
+      // px/ms, positive when the page moves down (the finger goes up)
+      const v = dt > 0 && dt < 200 ? (first.y - last.y) / dt : 0;
+      const list = stops();
+      const y = s.scrollTop;
+      const end = list[list.length - 1];
+      const vh = innerHeight;
+      // Past the last frame's stop: free, with a little momentum, until
+      // the gesture heads back above that stop.
+      if (y > end + 2) {
+        const to = y + v * 260;
+        glide(to < end + vh * 0.15 ? end : Math.min(max(), to), 420);
+        return;
+      }
+      const delta = y - list[from];
+      const go = Math.abs(delta) >= vh * NUDGE || Math.abs(v) >= FLICK ? Math.sign(Math.abs(v) >= FLICK ? v : delta) : 0;
+      let to = from;
+      if (go > 0) to = list.findIndex((p, i) => i > from && p > list[from] + 1);
+      if (go < 0) {
+        to = from;
+        for (let i = from - 1; i >= 0; i--) if (list[i] < list[from] - 1) { to = i; break; }
+      }
+      if (to < 0) {
+        // down from the last stop: into the free end
+        glide(Math.min(max(), y + Math.max(v, 0) * 260 + vh * 0.25), 420);
+        return;
+      }
+      glide(list[to]);
+    };
+    document.addEventListener("touchend", release, { passive: true, signal });
+    document.addEventListener("touchcancel", release, { passive: true, signal });
+    // A toolbar change or rotation moves every stop: land on the nearest.
+    let resized = 0;
+    window.addEventListener(
+      "resize",
+      () => {
+        clearTimeout(resized);
+        resized = window.setTimeout(() => {
+          if (raf || axis) return;
+          const list = stops();
+          const y = s.scrollTop;
+          if (y <= list[list.length - 1] + 2) window.scrollTo(0, list[nearest(list, y)]);
+        }, 200);
+      },
+      { passive: true, signal }
+    );
+    signal.addEventListener("abort", () => (stop(), clearTimeout(resized)), { once: true });
+  }
+
+  // ── ONWARD ────────────────────────────────────────────────────────────
+  // At the very end of the page, one more scroll down (a wheel pushed on
+  // past the end, or a finger pulling up there) goes to the portfolios.
+  const ONWARD_WHEEL = 220;
+  const ONWARD_TOUCH = 90;
+
+  function onward(href: string, signal: AbortSignal) {
+    let gone = false;
+    let pushed = 0;
+    let idle = 0;
+    let startY: number | null = null;
+    const atEnd = () => {
+      const s = scrollerEl();
+      return !!s && s.scrollTop >= s.scrollHeight - s.clientHeight - 2;
+    };
+    const go = () => {
+      if (gone) return;
+      gone = true;
+      void navigate(href);
+    };
+    window.addEventListener(
+      "wheel",
+      (e) => {
+        if (e.deltaY <= 0 || !atEnd()) {
+          pushed = 0;
+          return;
+        }
+        pushed += e.deltaY;
+        clearTimeout(idle);
+        idle = window.setTimeout(() => (pushed = 0), 600);
+        if (pushed > ONWARD_WHEEL) go();
+      },
+      { passive: true, signal }
+    );
+    window.addEventListener("touchstart", (e) => (startY = atEnd() ? e.touches[0].clientY : null), { passive: true, signal });
+    window.addEventListener(
+      "touchend",
+      (e) => {
+        if (startY === null || !atEnd()) return;
+        if (startY - e.changedTouches[0].clientY > ONWARD_TOUCH) go();
+        startY = null;
+      },
+      { passive: true, signal }
+    );
+    signal.addEventListener("abort", () => clearTimeout(idle), { once: true });
+  }
+
+  document.addEventListener("astro:page-load", () => {
+    const root = document.querySelector<HTMLElement>("[data-story-root]");
+    if (!root) return;
+    const signal = pageLifetime();
+
+    const wall = root.querySelector<HTMLElement>("[data-info-wall]");
+    const track = wall?.querySelector<HTMLElement>("[data-wall-track]");
+    const slides = wall ? Array.from(wall.querySelectorAll<HTMLElement>("[data-wall-slide]")) : [];
+    if (wall && track && slides.length > 1) carousel(root, wall, track, slides, signal);
+
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const href = root.querySelector<HTMLElement>("[data-onward]")?.dataset.onward;
+    if (href) onward(href, signal);
+    if (still) {
+      // Plain flow: no steps, no glide, everything shown.
+      root.removeAttribute("data-story-on");
+      return;
+    }
+    const chapters = chaptersOf(root);
+    const wrap = document.querySelector<HTMLElement>(".page-wrap");
+    if (phone()) pager(root, chapters, signal);
+    else {
+      if (wrap) wheelPager(root, chapters, wrap, signal);
+      settle(root, chapters, signal, null);
+    }
+    void story(root, chapters, signal);
   });
 </script>

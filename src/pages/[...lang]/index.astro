@@ -1,8 +1,15 @@
 ---
 import Layout from "../../layouts/Layout.astro";
-import LandingHero from "../../components/LandingHero.astro";
+import InfoPage from "../../components/InfoPage.astro";
+import ViewsPill from "../../components/ViewsPill.astro";
 import type { Lang } from "../../i18n/utils";
 
+// THE HOME PAGE IS THE STORY (2026-11-05, Josh: "make / the story"). On the
+// host, firebase.json answers / with a 302 to /info before this page is ever
+// served. This copy is for everything that does not apply host redirects (the
+// local dev server, a plain static preview): it shows the same story and
+// forwards to /info, which stays the one canonical address. The old start page
+// (LandingHero.astro) is no longer used.
 export function getStaticPaths() {
   return [
     { params: { lang: undefined } },
@@ -12,6 +19,7 @@ export function getStaticPaths() {
 
 const { lang = "en" } = Astro.params;
 const currentLang = (lang || "en") as Lang;
+const infoPath = currentLang === "de" ? "/de/info" : "/info";
 
 const title = "VSCN — Visual Science Communication Network";
 const description = currentLang === "de"
@@ -21,8 +29,9 @@ const description = currentLang === "de"
 <Layout
   title={title}
   description={description}
-  fullscreen
   lang={currentLang}
+  redirectTo={infoPath}
 >
-  <LandingHero lang={currentLang} />
+  <ViewsPill lang={currentLang} />
+  <InfoPage lang={currentLang} />
 </Layout>
