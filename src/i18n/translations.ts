@@ -23,8 +23,11 @@ export const ui: Record<string, Record<string, string>> = {
 
     // InfoPage (restyled 2026-11-02, design-kit/vscn-landing.af)
     "info.hero.title": "Knowledge deserves a visual form.",
-    "info.hero.lead": "Images engage an audience, show the beauty of information and create understanding in ways words alone can’t.",
+    "info.hero.lead": "Images are the most engaging way to communicate. Their beauty draws people in, and at the same time makes things clear at a glance.",
     "info.hero.claim": "That is why science needs more visuals!",
+    "info.network.pre": "The ",
+    "info.network.name": "Visual Science Communication Network",
+    "info.network.post": " celebrates, connects and promotes the people who give knowledge a visual form.",
     "info.h2.mission": "Our mission",
     "info.mission.1": "A network of illustrators and scientists",
     "info.mission.2": "Celebrating excellent visual science communication",
@@ -787,8 +790,11 @@ export const ui: Record<string, Record<string, string>> = {
 
     // InfoPage (restyled 2026-11-02, design-kit/vscn-landing.af)
     "info.hero.title": "Wissen verdient eine visuelle Form.",
-    "info.hero.lead": "Bilder sprechen ein Publikum an, zeigen die Schönheit von Information und schaffen Verständnis, wie es Worte allein nicht können.",
+    "info.hero.lead": "Bilder sind die wirkungsvollste Art zu kommunizieren. Ihre Schönheit zieht Menschen an und macht Inhalte zugleich auf einen Blick verständlich.",
     "info.hero.claim": "Darum braucht die Wissenschaft mehr Bilder!",
+    "info.network.pre": "Das ",
+    "info.network.name": "Visual Science Communication Network",
+    "info.network.post": " feiert, vernetzt und fördert die Menschen, die Wissen eine visuelle Form geben.",
     "info.h2.mission": "Unsere Mission",
     "info.mission.1": "Ein Netzwerk aus Illustrator:innen und Wissenschaftler:innen",
     "info.mission.2": "Herausragende visuelle Wissenschaftskommunikation feiern",
