@@ -296,8 +296,7 @@
 .mprof__caption,
 .mprof__project-desc,
 .mprof__text,
-.pdisc__bio,
-.pswp--vscn .pswp__vscn-sheet-caption {
+.pdisc__bio {
   font-size: var(--fs-100);
   font-weight: 400;
   line-height: 1.5;
@@ -364,29 +363,45 @@
   font-weight: 400;
   line-height: 1.4;
 }
-/* THE LIGHTBOX DESCRIPTION, A STEP UNDER ITS TITLE (2026-10-16, Josh: "the
-   description text should be smaller on desktop"). 12px under the 14px title
-   on a desktop; on a phone --fs-85 is the same 13px as CAPTION, so nothing
-   changes there. More leading, since it is the one paragraph in the window. */
+/* THE LIGHTBOX TAB, A STEP SMALLER THAN THE PAGE (2026-11-07, Josh: "make
+   the type a bit smaller"). Until then the tab spoke CAPTION and its second
+   line like the member page; it is chrome over a picture, so its title is
+   13px and everything under it — description, links, project, credits,
+   the artist — is 11px on a desktop, 12px on a phone. (The description had
+   been a step under the title since 2026-10-16.) */
+.pswp--vscn .pswp__vscn-sheet-caption {
+  font-size: var(--fs-90);
+  font-weight: 400;
+  line-height: 1.45;
+}
 .pswp--vscn .pswp__vscn-text-desc {
-  font-size: var(--fs-85);
+  font-size: var(--fs-78);
   font-weight: 400;
   line-height: 1.6;
+}
+.pswp--vscn .pswp__vscn-text-project,
+.pswp--vscn .pswp__vscn-text-affiliations,
+.pswp--vscn .pswp__vscn-text-artist {
+  font-size: var(--fs-78);
+  font-weight: 400;
+  line-height: 1.45;
+}
+.pswp--vscn .pswp__vscn-text-link {
+  font-size: var(--fs-78);
+  font-weight: 500;
+  line-height: 1.35;
 }
 
 /* CAPTION'S SECOND LINE: who a project was with, and the links under a
    picture, on the page, in the card's panel and in the lightbox. */
-.mprof__project-with,
-.pswp--vscn .pswp__vscn-text-project,
-.pswp--vscn .pswp__vscn-text-affiliations {
+.mprof__project-with {
   font-size: var(--fs-90);
   font-weight: 400;
   line-height: 1.45;
 }
 
 .mprof__link,
-.pdisc__link,
-.pswp--vscn .pswp__vscn-text-link {
+.pdisc__link {
   font-size: var(--fs-90);
   font-weight: 500;
   line-height: 1.35;
