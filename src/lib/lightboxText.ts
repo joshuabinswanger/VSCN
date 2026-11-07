@@ -503,7 +503,7 @@ const SHEET_ID = "pswp-vscn-sheet";
 
 /** Whether a work has anything for the sheet to hold beyond its title. */
 function hasSheetContent(t: TriggerText): boolean {
-  return Boolean(t.description || t.link || t.siteLink || t.project || t.affiliations.length);
+  return Boolean(t.description || t.link || t.siteLink || t.project || t.affiliations.length || t.meta);
 }
 
 function fadeIn(el: HTMLElement): void {
@@ -602,6 +602,18 @@ function sheetContent(t: TriggerText, labels: LightboxTextLabels, pswp: PhotoSwi
       }
       line.append(node);
     });
+    out.push(line);
+  }
+  // THE ARTIST, LAST (2026-11-07, Josh: "on the bottom the name of the
+  // artist should sit and also add a link to the profile"). The member's
+  // page when the trigger carries one; on that page itself, the name alone.
+  if (t.meta) {
+    const line = document.createElement("p");
+    line.className = "pswp__vscn-text-artist";
+    const name = document.createElement(t.profile ? "a" : "span");
+    name.textContent = t.meta;
+    if (name instanceof HTMLAnchorElement) name.href = t.profile;
+    line.append(name);
     out.push(line);
   }
   return out;
