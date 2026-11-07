@@ -89,6 +89,10 @@ const wall = await Promise.all(
     styles does, and the script switches the story off. */}
 <div class="info-page story" data-story-root data-paints-in data-story-on>
   <noscript><style>.story [data-in] { opacity: 1 !important; transform: none !important; }</style></noscript>
+  <!-- THE WAY PAST THE STORY (2026-11-07, Josh: "make it possible to skip the
+       info intro"). A quiet key in the window's corner while the story plays;
+       it steps back at the last frame, where the views pill takes over. -->
+  <a href={portfoliosHref} class="story-skip">{t("info.story.skip")}<span aria-hidden="true">→</span></a>
   <!-- Josh 11-06: a frame each for the headline; the network with
        Browse Portfolios; the works; the mission with the way to reach us. -->
   <!-- 1. HERO: the headline alone -->
@@ -327,6 +331,45 @@ const wall = await Promise.all(
     margin: 0;
     color: var(--color-dark);
   }
+  /* THE SKIP KEY: only with the story on (a plain page needs no way past
+     itself), bottom left (Turnstile's challenge, when it shows, takes the bottom right), gone at the last frame. */
+  .story-skip {
+    display: none;
+  }
+  .story[data-story-on] .story-skip {
+    position: fixed;
+    left: 2rem;
+    bottom: 2rem;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 0.45em;
+    padding: 0.5rem 0;
+    color: var(--color-muted);
+    text-decoration: none;
+    transition:
+      opacity 0.4s ease,
+      color 0.2s ease,
+      visibility 0s linear 0s;
+
+    @media (--bp-mobile) {
+      left: 1rem;
+      bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    }
+  }
+  .story[data-story-on] .story-skip:hover,
+  .story[data-story-on] .story-skip:focus-visible {
+    color: var(--color-dark);
+  }
+  .story[data-story-on][data-current="mission"] .story-skip {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 0.25s ease,
+      visibility 0s linear 0.25s;
+  }
+
   /* THE CUE: a word and a line that grows down, at the foot of the hero
      (while the hero is the chapter on screen) and of the last screen (the
      way on to the portfolios). Only with the story on. */

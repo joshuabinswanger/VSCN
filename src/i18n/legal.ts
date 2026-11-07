@@ -36,8 +36,8 @@ export interface LegalPageContent {
 }
 
 const UPDATED = "2026-09-22";
-// The privacy page moved on its own: embedded videos (2026-09-23).
-const PRIVACY_UPDATED = "2026-09-23";
+// The privacy page moved on its own: embedded videos (2026-09-23), the visit flag (2026-11-07).
+const PRIVACY_UPDATED = "2026-11-07";
 
 const en: Record<LegalPageId, LegalPageContent> = {
   impressum: {
@@ -141,7 +141,7 @@ const en: Record<LegalPageId, LegalPageContent> = {
         heading: "Visiting the site",
         body: [
           "The site is a set of static pages served by Firebase Hosting, a service of Google LLC. When you open a page, Google’s servers receive and log the technical data any web server sees: your IP address, the page requested, the time, and your browser and operating system. We use these logs only to run the site and to find faults; they are kept by Google for a limited time (typically 30 days) and then deleted.",
-          "The site sets no cookies of its own, runs no analytics, and embeds no advertising or tracking. Fonts are served from our own site, not from a third party.",
+          "The site sets no cookies of its own, runs no analytics, and embeds no advertising or tracking. Fonts are served from our own site, not from a third party. Your browser keeps one note in its own local storage that you have visited before, so the home address takes you straight to the portfolios next time; it holds no identifier, is never sent to us, and clearing your browser’s site data removes it.",
         ],
       },
       {
@@ -343,7 +343,7 @@ const de: Record<LegalPageId, LegalPageContent> = {
         heading: "Besuch der Website",
         body: [
           "Die Website besteht aus statischen Seiten, die von Firebase Hosting, einem Dienst der Google LLC, ausgeliefert werden. Wenn du eine Seite öffnest, empfangen und protokollieren Googles Server die technischen Daten, die jeder Webserver sieht: deine IP-Adresse, die aufgerufene Seite, die Uhrzeit sowie Browser und Betriebssystem. Wir nutzen diese Protokolle nur, um die Website zu betreiben und Fehler zu finden; Google bewahrt sie für begrenzte Zeit auf (in der Regel 30 Tage) und löscht sie dann.",
-          "Die Website setzt keine eigenen Cookies, betreibt keine Analyse-Tools und bindet weder Werbung noch Tracking ein. Schriften werden von unserer eigenen Website ausgeliefert, nicht von Dritten.",
+          "Die Website setzt keine eigenen Cookies, betreibt keine Analyse-Tools und bindet weder Werbung noch Tracking ein. Schriften werden von unserer eigenen Website ausgeliefert, nicht von Dritten. Dein Browser merkt sich in seinem eigenen lokalen Speicher nur, dass du schon einmal hier warst, damit dich die Startadresse beim nächsten Mal direkt zu den Portfolios führt; dieser Eintrag enthält keine Kennung, wird nie an uns gesendet und verschwindet, wenn du die Website-Daten deines Browsers löschst.",
         ],
       },
       {

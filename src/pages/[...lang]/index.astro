@@ -4,11 +4,15 @@ import InfoPage from "../../components/InfoPage.astro";
 import ViewsPill from "../../components/ViewsPill.astro";
 import type { Lang } from "../../i18n/utils";
 
-// THE HOME PAGE IS THE STORY (2026-11-05, Josh: "make / the story"). On the
-// host, firebase.json answers / with a 302 to /info before this page is ever
-// served. This copy is for everything that does not apply host redirects (the
-// local dev server, a plain static preview): it shows the same story and
-// forwards to /info, which stays the one canonical address. The old start page
+// THE HOME PAGE IS THE STORY (2026-11-05, Josh: "make / the story"), THE
+// FIRST TIME (2026-11-07, Josh: "store something so we know when someone was
+// already on the site"). This page decides in the browser: a first visit goes
+// on to /info, which stays the one canonical address; a browser that has
+// been here before goes to the Portfolios (Layout's returnTo, the
+// vscn:visited flag). Until 11-07 firebase.json answered / with a 302 to
+// /info, which no host rule can make depend on a return visit, so that
+// redirect is gone and this page is what the host serves. The story is still
+// rendered under it for a crawler that runs no script. The old start page
 // (LandingHero.astro) is no longer used.
 export function getStaticPaths() {
   return [
@@ -20,6 +24,8 @@ export function getStaticPaths() {
 const { lang = "en" } = Astro.params;
 const currentLang = (lang || "en") as Lang;
 const infoPath = currentLang === "de" ? "/de/info" : "/info";
+// A visitor who has been here before skips the story (2026-11-07, Josh).
+const portfoliosPath = currentLang === "de" ? "/de/community" : "/community";
 
 const title = "VSCN — Visual Science Communication Network";
 const description = currentLang === "de"
@@ -31,6 +37,7 @@ const description = currentLang === "de"
   description={description}
   lang={currentLang}
   redirectTo={infoPath}
+  returnTo={portfoliosPath}
 >
   <ViewsPill lang={currentLang} />
   <InfoPage lang={currentLang} />
