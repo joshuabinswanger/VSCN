@@ -487,6 +487,45 @@ test("publicProfiles: twelve ids save on a FULL profile", async () => {
   }));
 });
 
+test("profiles: the editor's Save UPDATES both docs in one batch, full profile, sixteen ids", async () => {
+  // 2026-11-08: a 15th work was refused on prod. The 1000-expression budget is
+  // per REQUEST, and updateUserProfile sends users + publicProfiles in one
+  // batch as UPDATES of stored docs, so both validators run against merged
+  // documents in the same budget. The create tests above never saw that.
+  const photoURL = "https://firebasestorage.googleapis.com/v0/b/vscn-39508.firebasestorage.app/o/users%2Fx%2Favatar%2Fx.webp?alt=media&token=4fc18198-fb08-482b-bf3d-268fd8e17775";
+  const full = {
+    displayName: "x".repeat(100), photoURL, photoImageId: "img-a", photoColor: "#123456",
+    memberType: "creator", role: "x".repeat(100), roleDe: "x".repeat(100),
+    bio: Array.from({ length: 35 }, () => "word").join(" "),
+    bioDe: Array.from({ length: 35 }, () => "Wort").join(" "),
+    portfolio: "x".repeat(200), socialMedia: "x".repeat(500),
+    affiliation: "x".repeat(150), location: "x".repeat(100),
+    languages: ["de", "en", "fr", "it"], visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
+    openTo: ["a", "b", "c", "d", "e"], primaryAudiences: ["science", "public", "policy-makers", "education"],
+    tags: ["a", "b", "c", "d", "e", "f", "g"],
+    gallery: Array.from({ length: 15 }, () => crypto.randomUUID()),
+    createdAt: new Date(), updatedAt: new Date(),
+  };
+  const priv = {
+    phone: "x".repeat(40), wantsToContribute: true, onboardingComplete: true,
+    receiveCommunityEmails: true, preferredLanguage: "en",
+    email: "member@example.test", status: "active",
+  };
+  await seed(env, `users/${OWNER}`, { ...full, ...priv });
+  await seed(env, `publicProfiles/${OWNER}`, { ...full, active: true });
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const save = (gallery) => {
+    const { email, status, ...editable } = priv;
+    const { createdAt, ...fields } = full;
+    const batch = db.batch();
+    batch.update(db.doc(`users/${OWNER}`), { ...fields, ...editable, gallery, primaryAudience: deleteField(), projects: deleteField(), updatedAt: new Date() });
+    batch.update(db.doc(`publicProfiles/${OWNER}`), { ...fields, gallery, active: true, primaryAudience: deleteField(), projects: deleteField(), updatedAt: new Date() });
+    return batch.commit();
+  };
+  await assertSucceeds(save(Array.from({ length: 16 }, () => crypto.randomUUID())));
+  await assertFails(save(Array.from({ length: 17 }, () => crypto.randomUUID())));
+});
+
 test("roleDe/bioDe: optional, and held to the English pair's caps on both docs", async () => {
   // An unlisted key would reject the WHOLE save through hasOnly, so the first
   // assertion is the one that matters: a German pair saves at all.
