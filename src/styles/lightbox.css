@@ -611,6 +611,34 @@
 .pswp--vscn .pswp__vscn-sheet.is-anchored .pswp__vscn-sheet-body {
   padding-inline: 0;
 }
+/* A GREY RULE DOWN THE LEFT OF THE OPENED WORDS (2026-11-08, Josh: "in
+   extension there is a vertical bar to the left of the additional info …
+   smooth animation … grey"). The words sit a step in from the title; the
+   rule draws itself top to bottom as the description unfolds and folds back
+   up as it shuts. A painted background, not a child: a scroll container's
+   own background stays put, so long words scroll past the rule. It stops
+   above the body's bottom padding, level with the last line. */
+.pswp--vscn .pswp__vscn-sheet.is-anchored .pswp__vscn-sheet-body {
+  padding-left: 0.85rem;
+  background-image: linear-gradient(var(--color-muted), var(--color-muted));
+  background-repeat: no-repeat;
+  background-position: left top;
+  background-origin: content-box;
+  background-clip: padding-box;
+  background-position-x: -0.85rem;
+  background-size: 1px 0;
+  transition:
+    max-height var(--lb-dur) var(--lb-ease),
+    padding-bottom var(--lb-dur) var(--lb-ease),
+    background-size var(--lb-dur) var(--lb-ease);
+}
+.pswp--vscn .pswp__vscn-sheet.is-anchored.is-open .pswp__vscn-sheet-body {
+  background-size: 1px 100%;
+  transition:
+    max-height var(--lb-dur) var(--lb-ease),
+    padding-bottom var(--lb-dur) var(--lb-ease),
+    background-size calc(var(--lb-dur) * 1.8) var(--lb-ease) calc(var(--lb-dur) * 0.3);
+}
 /* `pre-line` because a member who wrote paragraphs meant them, and it is the
    same treatment .mprof__desc gives the identical string on the member's own
    page. */
