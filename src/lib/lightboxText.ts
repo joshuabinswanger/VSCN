@@ -655,6 +655,8 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
       sheet.style.bottom = "16px";
       sheet.style.maxHeight = `${Math.round(vy - 80)}px`;
       sheet.style.setProperty("--body-max", `${Math.round(Math.max(0, vy - 80 - 90))}px`);
+      // Over the zoomed picture: the plain words need paper under them.
+      sheet.classList.add("is-over");
       slideFrom(sheet, flip);
       return;
     }
@@ -689,6 +691,10 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
       const floor = viewport.y - foot - need;
       if (floor < top) top = Math.max(mobile ? 52 : 64, floor);
     }
+    // PAPER UNDER THE WORDS ONLY WHERE THEY LIE ON THE PICTURE (2026-11-08,
+    // Josh: "just plain text"). Below the picture they are bare type on the
+    // lightbox's own grain; risen over it, they need a ground to be read.
+    sheet.classList.toggle("is-over", top < y + h + GAP - 0.5);
     const room = Math.max(0, viewport.y - top - foot);
     const peek = parseFloat(sheet.style.getPropertyValue("--peek")) || 48;
     sheet.style.left = `${Math.round(left)}px`;
