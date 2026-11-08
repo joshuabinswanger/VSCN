@@ -332,7 +332,7 @@ const wall = await Promise.all(
     color: var(--color-dark);
   }
   /* THE SKIP KEY: only with the story on (a plain page needs no way past
-     itself), bottom left (Turnstile's challenge, when it shows, takes the bottom right), gone at the last frame. */
+     itself), bottom left on a desktop (Turnstile's challenge, when it shows, takes the bottom right), on top on a phone, gone at the last frame. */
   .story-skip {
     display: none;
   }
@@ -352,9 +352,12 @@ const wall = await Promise.all(
       color 0.2s ease,
       visibility 0s linear 0s;
 
+    /* A phone has it on top, just under the header, in line with VSCN
+       (Josh 2026-11-08: "should be on top"). */
     @media (--bp-mobile) {
       left: 1rem;
-      bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+      top: calc(var(--header-h) + 0.25rem);
+      bottom: auto;
     }
   }
   .story[data-story-on] .story-skip:hover,
