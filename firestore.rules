@@ -332,33 +332,23 @@ function validStorageUrl(url) {
 // read eight records per save. The readers require ownerUid == uid and drop
 // it — see orderedGalleryItems() in src/lib/galleryRecords.ts.
 //
-// Keep MAX_GALLERY_IMAGES in src/lib/gallery.ts in sync with the size cap
-// (rules cannot loop over lists, hence the unrolled element checks).
+// Keep MAX_GALLERY_IMAGES in src/lib/gallery.ts in sync with the size cap.
+//
+// ONE EXPRESSION FOR THE WHOLE LIST, NOT ONE PER SLOT (2026-11-08). The
+// unrolled per-element check cost ~6 expressions a slot, the editor's Save
+// updates BOTH profile docs in one batch, and the 1000-expression budget
+// is per request: Josh's own 15th work was refused on prod while a 14th
+// passed. The pattern holds every id to 1-64 characters; join() errors on a
+// map, which denies the write, but turns a NUMBER into its digits, so hasOnly
+// against the split-back strings is the type check (42 != '42').
+// '/' is the separator because a Firestore id cannot contain one.
+// A uuid is 36 characters; an unverified member's slot id `{uid}-gallery` is
+// the uid (28) plus 8. 64 leaves room and still refuses a pasted URL.
 function validGallery(value) {
   return value is list
     && value.size() <= 16
-    && (value.size() < 1 || validGalleryId(value[0]))
-    && (value.size() < 2 || validGalleryId(value[1]))
-    && (value.size() < 3 || validGalleryId(value[2]))
-    && (value.size() < 4 || validGalleryId(value[3]))
-    && (value.size() < 5 || validGalleryId(value[4]))
-    && (value.size() < 6 || validGalleryId(value[5]))
-    && (value.size() < 7 || validGalleryId(value[6]))
-    && (value.size() < 8 || validGalleryId(value[7]))
-    && (value.size() < 9 || validGalleryId(value[8]))
-    && (value.size() < 10 || validGalleryId(value[9]))
-    && (value.size() < 11 || validGalleryId(value[10]))
-    && (value.size() < 12 || validGalleryId(value[11]))
-    && (value.size() < 13 || validGalleryId(value[12]))
-    && (value.size() < 14 || validGalleryId(value[13]))
-    && (value.size() < 15 || validGalleryId(value[14]))
-    && (value.size() < 16 || validGalleryId(value[15]));
-}
-
-// A uuid is 36 characters; an unverified member's slot id `{uid}-gallery` is
-// the uid (28) plus 8. 64 leaves room and still refuses a pasted URL.
-function validGalleryId(id) {
-  return id is string && id.size() > 0 && id.size() <= 64;
+    && (value.size() == 0 || (value.join('/').matches('[^/]{1,64}(/[^/]{1,64})*')
+        && value.hasOnly(value.join('/').split('/'))));
 }
 
 

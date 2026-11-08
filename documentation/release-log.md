@@ -12,6 +12,16 @@ afterwards, on 2026-09-29, from the CI run records (`gh run view <id>`); what a 
 show, chiefly a by-hand `verify:release` result, is marked "operator-reported" or "not confirmed".
 The entries from 2026-10-30 to 2026-10-31 were likewise written afterwards, on 2026-11-04.
 
+## 2026-11-08 · efb9b61 · prod · Skip the story, returning visitors to Portfolios, work cap 16, intro fades
+Machine: GREEN. `verify:release --project prod` by Claude at ~13:10Z: 8 of 8 passing, 0 warnings.
+Walk:    GREEN, run 42482612101 (PR #219 merged ~12:55Z).
+Action:  none. A plain dev → main merge this time (trial merge tree = dev's, d865b90). Ships the
+         Skip to Portfolios key (on a phone centred in the header row, VSCN and LOGIN hidden until
+         the last frame), `/` deciding in the browser (first visit → /info, returning → /community;
+         the / and /de 302s gone from firebase.json), works per profile 12 → 16 (rules +
+         Functions), the lightbox artist line, plain-text description and closer title, and the
+         intro fading out in place instead of flying into the header. Josh checks on his iPhone.
+
 ## 2026-11-06 · 8fea055 · prod · Info story is the landing page, views pill re-centred, fixed header, lightbox tab
 Machine: GREEN. `verify:release --project prod` by Claude at ~19:50Z: 8 of 8 passing, 0 warnings.
 Walk:    GREEN, run 42280415391 (PR #218 merged ~19:35Z).
