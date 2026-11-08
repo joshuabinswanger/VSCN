@@ -20,9 +20,10 @@ function storageBucket(): string {
 
 // Keep in sync with validGallery() in firestore.rules, and with the slice in
 // functions/src/rebuildQueue.ts. 8 -> 12 on 2026-09-26 (Josh: "lets up the
-// image count to 12"); uploads.ts's MAX_STORED_WORKS (20) still leaves room
+// image count to 12"; 12 -> 16 on 2026-11-08, Josh: "raise the cap for total
+// work for a profile to 16"); uploads.ts's MAX_STORED_WORKS (24) still leaves room
 // for replacements awaiting cleanup.
-export const MAX_GALLERY_IMAGES = 12;
+export const MAX_GALLERY_IMAGES = 16;
 
 /**
  * What an account may hold BEFORE its email is verified (2026-09-02, Josh:
@@ -564,7 +565,7 @@ interface EmbedWork {
  */
 export type EmbedErrorCode =
   | "verify" | "notVideoLink" | "videoNotFound" | "notEmbeddable" | "providerUnavailable" | "noThumbnail"
-  /** The account holds its 20 works, counting removed ones the sweep has not collected yet. */
+  /** The account holds its 24 works, counting removed ones the sweep has not collected yet. */
   | "storedLimit"
   /** 40 ATTEMPTS in an hour — uploads and video links share the counter, and a failed lookup counts (functions/src/uploads.ts reserveWork). */
   | "hourlyLimit"

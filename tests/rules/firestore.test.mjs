@@ -429,12 +429,12 @@ test("publicProfiles: the gallery is a list of image ids, and nothing else", asy
 
   await assertSucceeds(save([]));
   await assertSucceeds(save(["img-1"]));
-  await assertSucceeds(save(Array.from({ length: 12 }, (_, i) => `img-${i + 1}`)));
+  await assertSucceeds(save(Array.from({ length: 16 }, (_, i) => `img-${i + 1}`)));
   await assertSucceeds(save([`${OWNER}-gallery`]));
   await assertSucceeds(save([crypto.randomUUID()]));
 
-  // A thirteenth is refused: the cap is the list's own size.
-  await assertFails(save(Array.from({ length: 13 }, (_, i) => `${i + 1}`)));
+  // A seventeenth is refused: the cap is the list's own size.
+  await assertFails(save(Array.from({ length: 17 }, (_, i) => `${i + 1}`)));
   // THE OLD SHAPE is refused outright (2026-09-07 — the record is the work,
   // documentation/20260907-works-on-the-record-design.md). A stale tab that
   // still writes objects fails safe rather than re-growing the array.
@@ -464,7 +464,7 @@ test("publicProfiles: twelve ids save on a FULL profile", async () => {
     affiliation: "x".repeat(150), location: "x".repeat(100),
     languages: ["de", "en", "fr", "it"], visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
     openTo: ["a", "b", "c", "d", "e"], primaryAudiences, tags: ["a", "b", "c", "d", "e", "f", "g"],
-    gallery: Array.from({ length: 12 }, () => crypto.randomUUID()),
+    gallery: Array.from({ length: 16 }, () => crypto.randomUUID()),
     active: true,
   }));
   await env.withSecurityRulesDisabled(async (ctx) => {
@@ -481,7 +481,7 @@ test("publicProfiles: twelve ids save on a FULL profile", async () => {
     affiliation: "x".repeat(150), location: "x".repeat(100),
     languages: ["de", "en", "fr", "it"], visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
     openTo: ["a", "b", "c", "d", "e"], primaryAudiences, tags: ["a", "b", "c", "d", "e", "f", "g"],
-    gallery: Array.from({ length: 12 }, () => crypto.randomUUID()),
+    gallery: Array.from({ length: 16 }, () => crypto.randomUUID()),
     phone: "x".repeat(40), wantsToContribute: true, onboardingComplete: true,
     receiveCommunityEmails: true, preferredLanguage: "en",
   }));

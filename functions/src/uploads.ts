@@ -17,7 +17,7 @@ import sharp from "sharp";
  * account may hold — and a loop's extra files (release 2) cost nothing here.
  * Records awaiting the sweep still count, exactly as their files did.
  */
-export const MAX_STORED_WORKS = 20;
+export const MAX_STORED_WORKS = 24;
 const MAX_AUTHORIZATIONS_PER_HOUR = 40;
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 

@@ -336,7 +336,7 @@ function validStorageUrl(url) {
 // (rules cannot loop over lists, hence the unrolled element checks).
 function validGallery(value) {
   return value is list
-    && value.size() <= 12
+    && value.size() <= 16
     && (value.size() < 1 || validGalleryId(value[0]))
     && (value.size() < 2 || validGalleryId(value[1]))
     && (value.size() < 3 || validGalleryId(value[2]))
@@ -348,7 +348,11 @@ function validGallery(value) {
     && (value.size() < 9 || validGalleryId(value[8]))
     && (value.size() < 10 || validGalleryId(value[9]))
     && (value.size() < 11 || validGalleryId(value[10]))
-    && (value.size() < 12 || validGalleryId(value[11]));
+    && (value.size() < 12 || validGalleryId(value[11]))
+    && (value.size() < 13 || validGalleryId(value[12]))
+    && (value.size() < 14 || validGalleryId(value[13]))
+    && (value.size() < 15 || validGalleryId(value[14]))
+    && (value.size() < 16 || validGalleryId(value[15]));
 }
 
 // A uuid is 36 characters; an unverified member's slot id `{uid}-gallery` is
