@@ -352,12 +352,37 @@ const wall = await Promise.all(
       color 0.2s ease,
       visibility 0s linear 0s;
 
-    /* A phone has it on top, just under the header, in line with VSCN
-       (Josh 2026-11-08: "should be on top"). */
+    /* A phone has it IN the header row, centred, standing in for VSCN and
+       LOGIN, which step aside while it shows (Josh 2026-11-08: "should be on
+       top", then "the login and vscn button should be hidden on info but
+       instead the portfolio button at the top centered"). */
     @media (--bp-mobile) {
-      left: 1rem;
-      top: calc(var(--header-h) + 0.25rem);
+      left: 50%;
+      top: 0;
       bottom: auto;
+      height: var(--header-h);
+      padding: 0;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+  }
+  /* The header steps aside on a phone while the key is up, and comes back
+     with the last frame, where the key goes and the views pill arrives. */
+  @media (--bp-mobile) {
+    :global(:root:has(.story) .brand-ticker),
+    :global(:root:has(.story) nav[data-astro-transition-persist="navbar"]) {
+      transition:
+        opacity 0.4s ease,
+        visibility 0s linear 0s;
+    }
+    :global(:root:has(.story[data-story-on]:not([data-current="mission"])) .brand-ticker),
+    :global(:root:has(.story[data-story-on]:not([data-current="mission"])) nav[data-astro-transition-persist="navbar"]) {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition:
+        opacity 0.25s ease,
+        visibility 0s linear 0.25s;
     }
   }
   .story[data-story-on] .story-skip:hover,
