@@ -504,9 +504,12 @@
   display: none;
 }
 .pswp--vscn .pswp__vscn-sheet.is-anchored .pswp__vscn-sheet-handle {
-  /* Josh 11-08: the title "a bit closer" to the picture's foot. With the
-     placement's 10px GAP this puts it ~12px under the picture (was ~20). */
-  padding-top: 0.15rem;
+  /* Josh 11-08: the title "a bit closer" to the picture's foot, twice.
+     The placement keeps its 10px GAP (lightboxText.ts reads it for is-over);
+     the handle reaches back up into it, so the title's letters stand ~6px
+     under the picture (~20 at first, then ~12). */
+  padding-top: 0;
+  margin-top: -0.3rem;
 }
 .pswp--vscn .pswp__vscn-sheet.is-anchored .pswp__vscn-sheet-head {
   padding-bottom: 0.4rem;
