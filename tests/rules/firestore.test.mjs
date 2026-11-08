@@ -492,7 +492,7 @@ test("profiles: the editor's Save UPDATES both docs in one batch, full profile, 
   // per REQUEST, and updateUserProfile sends users + publicProfiles in one
   // batch as UPDATES of stored docs, so both validators run against merged
   // documents in the same budget. The create tests above never saw that.
-  const photoURL = "https://firebasestorage.googleapis.com/v0/b/vscn-39508.firebasestorage.app/o/users%2Fx%2Favatar%2Fx.webp?alt=media&token=4fc18198-fb08-482b-bf3d-268fd8e17775";
+  const photoURL = "https://firebasestorage.googleapis.com/v0/b/vscn-39508.firebasestorage.app/o/users%2Fx%2Favatar%2Fx.webp?alt=media";
   const full = {
     displayName: "x".repeat(100), photoURL, photoImageId: "img-a", photoColor: "#123456",
     memberType: "creator", role: "x".repeat(100), roleDe: "x".repeat(100),
