@@ -32,7 +32,7 @@ test('a replacement inherits the carouselId along with its other words', () => {
 test('upload allocation counts stored works and serializes concurrent reservations', async () => {
   // Records, not files, since video links (2026-09-23): one work may own a
   // poster and an automatic poster, and the cap is about works.
-  for (let i = 0; i < 19; i += 1) {
+  for (let i = 0; i < 23; i += 1) {
     await db.doc(`images/old-${i}`).set({ ownerUid: 'member', kind: 'gallery', storagePath: `users/member/gallery/old-${i}.webp`, status: i % 2 ? 'live' : 'pendingDeletion' });
   }
   await db.doc('images/someone-else').set({ ownerUid: 'other', kind: 'gallery', storagePath: 'users/other/gallery/someone-else.webp', status: 'live' });
@@ -44,7 +44,7 @@ test('upload allocation counts stored works and serializes concurrent reservatio
   assert.equal(results.filter((r) => r.status === 'fulfilled').length, 1);
   assert.equal(results.find((r) => r.status === 'rejected').reason.code, 'resource-exhausted');
   assert.equal((await db.collection('uploadPermits').get()).size, 1);
-  assert.equal((await db.collection('images').where('ownerUid', '==', 'member').get()).size, 20);
+  assert.equal((await db.collection('images').where('ownerUid', '==', 'member').get()).size, 24);
 });
 
 test('upload allocation enforces ownership and hourly limits', async () => {
@@ -616,7 +616,7 @@ test('a video link counts against the stored-work cap like any upload', async ()
   const { bucket } = memoryBucket();
   mock.method(adminModule, 'getBucket', () => bucket);
   const calls = stubPlatforms({ thumbnail: Buffer.alloc(0) });
-  for (let i = 0; i < 20; i += 1) {
+  for (let i = 0; i < 24; i += 1) {
     await db.doc(`images/held-${i}`).set({ ownerUid: 'member', kind: 'gallery', storagePath: `users/member/gallery/held-${i}.webp`, status: 'live' });
   }
   await assert.rejects(resolveEmbed.run(verifiedMember({ url: 'youtu.be/dQw4w9WgXcQ' })),
