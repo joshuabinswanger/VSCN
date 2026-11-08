@@ -29,8 +29,10 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
      (Layout.astro, .brand-slot). This is four rows of the same slots at
      display size, the initials aligned in a column: V S C N drop in top to
      bottom, each row writes its word, the whole name holds, and then the words
-     fly straight into the header, each row folding to its initial in flight
-     and landing on its own slot of the header's VSCN while the paper lifts.
+     fade out where they stand, tails folding away, while the paper lifts and
+     the header's VSCN fades in underneath (2026-11-08, Josh: "the animation
+     that move the vscn to the top left replace with fade instead of
+     translation"; until then each row flew onto its own header slot).
      The choreography is data in src/lib/introCascade.ts; the script below
      turns it into Web Animations on one clock. */
   #page-loader {
@@ -49,20 +51,16 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     pointer-events: none;
   }
 
-  /* The header's own VSCN stays out of sight until the travellers land on
-     it: the intro's last frame is the site's first. The loader is removed in
-     the same frame the swap happens, so nothing is ever drawn twice. */
-  :global(body:has(#page-loader) #brand-name) {
-    visibility: hidden;
-  }
+  /* The header's own VSCN is simply under the paper: the loader fading away
+     uncovers it, so the two cross-fade on the compositor with no timer to
+     arrive late. (It was hidden while the rows flew onto it.) */
 
   .pl-stack {
     width: var(--pl-measure);
     display: flex;
     flex-direction: column;
     gap: 0.12em;
-    /* Same typography as .brand-name in Layout.astro, so that a transform
-       scale lands the glyphs exactly on the header's. */
+    /* Same typography as .brand-name in Layout.astro. */
     font-size: var(--pl-size);
     font-weight: 800;
     line-height: 1;
@@ -75,7 +73,6 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
   .pl-row {
     display: flex;
     height: 1em;
-    transform-origin: 0 0;
   }
 
   /* One slot per glyph position. Each slot shows one letter in the whole
@@ -129,12 +126,9 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     foldStagger: 0.04 * SPEED,
     travelLag: 0.08 * SPEED,
   };
-  // Long enough for the longest tail ("ommunication") to finish folding in
-  // flight, so every row lands as a single letter.
-  const TRAVEL_S = 0.5 * SPEED;
-  // Between one row setting off and the next, top to bottom: the column
-  // peels into the line rather than snapping to it.
-  const TRAVEL_STAGGER_S = 0.03 * SPEED;
+  // The fade: the stacked words and the paper go, the header's VSCN is
+  // uncovered. Long enough for the tails to tip away inside it.
+  const FADE_S = 0.6 * SPEED;
   const LONGEST = INTRO_WORDS.reduce((a, b) => (b.length > a.length ? b : a));
   const CURVE = "cubic-bezier(0.65, 0, 0.35, 1)";
 
@@ -209,7 +203,6 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     const rowEls = Array.from(stack.querySelectorAll<HTMLElement>(".pl-row"));
     const rows = rowEls.map((row) => Array.from(row.querySelectorAll<HTMLElement>(".pl-slot")));
     let done = false;
-    let flights: Animation[] | null = null;
 
     const finish = () => {
       if (done) return;
@@ -236,12 +229,9 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
 
     // THE FONT THAT CAME LATE (2026-10-30): the 1.5 s wait above is a
     // ceiling, and a cold phone load can need more. The letters reflow into
-    // the new face on their own; the stack refits to the column, and the
-    // flights are re-aimed if they have not left yet.
+    // the new face on their own; the stack refits to the column.
     void font.then(() => {
-      if (done) return;
-      size();
-      if (flights) retarget(rowEls, flights);
+      if (!done) size();
     });
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -280,7 +270,7 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
           );
         } else {
           // The fold: the letter tips away on the first beat, the last
-          // letter first, while its row is already flying. The cell keeps
+          // letter first, while the stack is already fading. The cell keeps
           // its width, so nothing slides over a letter still turning.
           face.animate(
             [
@@ -294,26 +284,19 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
       });
     });
 
-    // The travel and the paper, booked now too. The header's slots are
-    // measured now and again just before take-off, in case the header
-    // re-fitted itself in between.
-    const travelAt = plan.travelAt * 1000;
-    flights = travel(loader, rowEls, travelAt);
-    if (!flights) {
-      setTimeout(() => {
-        loader
-          .animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: "forwards" })
-          .finished.then(finish, finish);
-      }, travelAt);
-      return;
-    }
-    const booked = flights;
-    setTimeout(() => retarget(rowEls, booked), Math.max(0, travelAt - 120));
-    Promise.all(booked.map((f) => f.finished)).then(finish, finish);
+    // The fade, booked now too: the words where they stand and the paper go
+    // together, uncovering the header's VSCN.
+    const fadeAt = plan.travelAt * 1000;
+    const fade = loader.animate([{ opacity: 1 }, { opacity: 0 }], {
+      duration: FADE_S * 1000,
+      delay: fadeAt,
+      easing: "ease-in-out",
+      fill: "forwards",
+    });
+    fade.finished.then(finish, finish);
     // Safety net for environments whose animations never finish (frozen
-    // timelines in some webviews): past the travel's end.
-    const travelEnds = travelAt + (TRAVEL_S + (rowEls.length - 1) * TRAVEL_STAGGER_S) * 1000;
-    setTimeout(finish, travelEnds + 1500);
+    // timelines in some webviews): past the fade's end.
+    setTimeout(finish, fadeAt + FADE_S * 1000 + 1500);
 
     // Fit the stack to the column in whatever face is drawing now.
     function size() {
@@ -337,81 +320,5 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     if (available > 0 && width > available) {
       stack.style.fontSize = `${(current * available) / width}px`;
     }
-  }
-
-  // The header's VSCN, letter by letter: the resting slots that show a glyph,
-  // in order. Hidden by visibility while the loader is up, so their boxes
-  // are real.
-  function headerLetterRects(count: number): DOMRect[] | null {
-    const brand = document.getElementById("brand-name");
-    if (!brand) return null;
-    const rects = Array.from(brand.querySelectorAll<HTMLElement>(".brand-slot"))
-      .filter((slot) => slot.offsetParent !== null)
-      .filter((slot) => (slot.querySelector(".brand-slot__rest")?.textContent ?? "") !== "")
-      .slice(0, count)
-      .map((slot) => slot.getBoundingClientRect());
-    return rects.length === count ? rects : null;
-  }
-
-  // Where each row must go: scaled about its initial's top-left corner, from
-  // where that initial stands onto its own slot of the header's VSCN.
-  function flightTransforms(rows: HTMLElement[]): string[] | null {
-    const targets = headerLetterRects(rows.length);
-    const brand = document.getElementById("brand-name");
-    const stack = rows[0]?.closest<HTMLElement>(".pl-stack");
-    if (!targets || !brand || !stack) return null;
-    const scale =
-      parseFloat(getComputedStyle(brand).fontSize) / parseFloat(getComputedStyle(stack).fontSize);
-    return rows.map((row, i) => {
-      const initial = row.querySelector<HTMLElement>(".pl-slot");
-      const to = targets[i];
-      if (!initial || !to) return "none";
-      const from = initial.getBoundingClientRect();
-      return `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${scale})`;
-    });
-  }
-
-  // Full words straight into the header: each ROW flies top to bottom while
-  // the paper lifts. The tails tip away inside the moving row at the same
-  // time, from the end, so a word lands as its initial. The header's copy
-  // shows the instant the loader goes.
-  function travel(loader: HTMLElement, rows: HTMLElement[], at: number): Animation[] | null {
-    const ends = flightTransforms(rows);
-    if (!ends) return null;
-    loader.animate(
-      [
-        { backgroundColor: getComputedStyle(loader).backgroundColor },
-        { backgroundColor: "transparent" },
-      ],
-      {
-        duration: TRAVEL_S * 1000,
-        delay: at,
-        easing: "ease-in",
-        fill: "forwards",
-      }
-    );
-    return rows.map((row, i) =>
-      row.animate([{ transform: "none" }, { transform: ends[i] }], {
-        duration: TRAVEL_S * 1000,
-        delay: at + i * TRAVEL_STAGGER_S * 1000,
-        easing: CURVE,
-        fill: "forwards",
-      })
-    );
-  }
-
-  // Just before take-off: if the header moved since the flights were booked,
-  // point them at where it is now. Only while every row still stands: a
-  // moving row's own box is no longer where it took off from.
-  function retarget(rows: HTMLElement[], flights: Animation[]) {
-    if (flights.some((flight) => flight.effect?.getComputedTiming().progress !== null)) return;
-    const ends = flightTransforms(rows);
-    if (!ends) return;
-    flights.forEach((flight, i) => {
-      (flight.effect as KeyframeEffect | null)?.setKeyframes([
-        { transform: "none" },
-        { transform: ends[i] },
-      ]);
-    });
   }
 </script>

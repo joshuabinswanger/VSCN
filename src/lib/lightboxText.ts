@@ -503,7 +503,7 @@ const SHEET_ID = "pswp-vscn-sheet";
 
 /** Whether a work has anything for the sheet to hold beyond its title. */
 function hasSheetContent(t: TriggerText): boolean {
-  return Boolean(t.description || t.link || t.siteLink || t.project || t.affiliations.length);
+  return Boolean(t.description || t.link || t.siteLink || t.project || t.affiliations.length || t.meta);
 }
 
 function fadeIn(el: HTMLElement): void {
@@ -604,6 +604,18 @@ function sheetContent(t: TriggerText, labels: LightboxTextLabels, pswp: PhotoSwi
     });
     out.push(line);
   }
+  // THE ARTIST, LAST (2026-11-07, Josh: "on the bottom the name of the
+  // artist should sit and also add a link to the profile"). The member's
+  // page when the trigger carries one; on that page itself, the name alone.
+  if (t.meta) {
+    const line = document.createElement("p");
+    line.className = "pswp__vscn-text-artist";
+    const name = document.createElement(t.profile ? "a" : "span");
+    name.textContent = t.meta;
+    if (name instanceof HTMLAnchorElement) name.href = t.profile;
+    line.append(name);
+    out.push(line);
+  }
   return out;
 }
 
@@ -643,6 +655,8 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
       sheet.style.bottom = "16px";
       sheet.style.maxHeight = `${Math.round(vy - 80)}px`;
       sheet.style.setProperty("--body-max", `${Math.round(Math.max(0, vy - 80 - 90))}px`);
+      // Over the zoomed picture: the plain words need paper under them.
+      sheet.classList.add("is-over");
       slideFrom(sheet, flip);
       return;
     }
@@ -677,6 +691,10 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
       const floor = viewport.y - foot - need;
       if (floor < top) top = Math.max(mobile ? 52 : 64, floor);
     }
+    // PAPER UNDER THE WORDS ONLY WHERE THEY LIE ON THE PICTURE (2026-11-08,
+    // Josh: "just plain text"). Below the picture they are bare type on the
+    // lightbox's own grain; risen over it, they need a ground to be read.
+    sheet.classList.toggle("is-over", top < y + h + GAP - 0.5);
     const room = Math.max(0, viewport.y - top - foot);
     const peek = parseFloat(sheet.style.getPropertyValue("--peek")) || 48;
     sheet.style.left = `${Math.round(left)}px`;

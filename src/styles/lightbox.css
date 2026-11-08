@@ -504,7 +504,9 @@
   display: none;
 }
 .pswp--vscn .pswp__vscn-sheet.is-anchored .pswp__vscn-sheet-handle {
-  padding-top: 0.75rem;
+  /* Josh 11-08: the title "a bit closer" to the picture's foot. With the
+     placement's 10px GAP this puts it ~12px under the picture (was ~20). */
+  padding-top: 0.15rem;
 }
 .pswp--vscn .pswp__vscn-sheet.is-anchored .pswp__vscn-sheet-head {
   padding-bottom: 0.4rem;
@@ -571,6 +573,44 @@
     padding-inline: 1rem;
   }
 }
+/* PLAIN TEXT, NOT A TAB (2026-11-08, Josh: "not be in a box, i like it
+   better when there is just plain text"). Under the picture the words are
+   type on the lightbox's grain: no outline, no corner, no shadow, no fill
+   (a flat paper fill showed as a lighter box against the grain), and no
+   inner margin, so the title starts on the picture's own left edge. Only
+   where the words lie ON the picture — an open description risen over it,
+   or the zoomed line at the window's foot — does the paper come back under
+   them (`is-over`, lightboxText.ts), or they could not be read. */
+.pswp--vscn .pswp__vscn-sheet.is-anchored,
+.pswp--vscn .pswp__vscn-sheet.is-anchored.is-open {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.pswp--vscn .pswp__vscn-sheet.is-anchored.is-over {
+  background: var(--color-bg);
+}
+/* ...and that paper carries the ground's grain (the .pswp__bg rule above,
+   same tile, blend and strength), so it reads as the same surface, not a
+   lighter panel. Noise has no pattern to line up, so the tiles need not
+   meet. Under the words: the sheet is its own stacking context (z-index). */
+.pswp--vscn .pswp__vscn-sheet.is-anchored.is-over::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("../assets/noise-transparent-2.png");
+  background-repeat: repeat;
+  background-size: 180px 180px;
+  mix-blend-mode: multiply;
+  opacity: 0.7;
+}
+.pswp--vscn .pswp__vscn-sheet.is-anchored .pswp__vscn-sheet-handle,
+.pswp--vscn .pswp__vscn-sheet.is-anchored .pswp__vscn-sheet-body {
+  padding-inline: 0;
+}
 /* `pre-line` because a member who wrote paragraphs meant them, and it is the
    same treatment .mprof__desc gives the identical string on the member's own
    page. */
@@ -611,12 +651,14 @@
    member page's own "With …" line under a project's title (CAPTION, muted)
    since 2026-09-28. The names in them are underlined links, going dark. */
 .pswp--vscn .pswp__vscn-text-project,
-.pswp--vscn .pswp__vscn-text-affiliations {
+.pswp--vscn .pswp__vscn-text-affiliations,
+.pswp--vscn .pswp__vscn-text-artist {
   display: block;
   color: var(--color-muted);
 }
 .pswp--vscn .pswp__vscn-text-project a,
-.pswp--vscn .pswp__vscn-text-affiliations a {
+.pswp--vscn .pswp__vscn-text-affiliations a,
+.pswp--vscn .pswp__vscn-text-artist a {
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -624,7 +666,9 @@
 .pswp--vscn .pswp__vscn-text-project a:hover,
 .pswp--vscn .pswp__vscn-text-project a:focus-visible,
 .pswp--vscn .pswp__vscn-text-affiliations a:hover,
-.pswp--vscn .pswp__vscn-text-affiliations a:focus-visible {
+.pswp--vscn .pswp__vscn-text-affiliations a:focus-visible,
+.pswp--vscn .pswp__vscn-text-artist a:hover,
+.pswp--vscn .pswp__vscn-text-artist a:focus-visible {
   color: var(--color-dark);
 }
 

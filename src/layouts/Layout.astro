@@ -31,6 +31,13 @@ interface Props {
    * on. Static hosting has no 301, so this is the honest equivalent.
    */
   redirectTo?: string;
+  /**
+   * Where a RETURNING visitor goes instead of `redirectTo` (the home page:
+   * the story the first time, the Portfolios after that). Decided in the
+   * browser from the visit flag below, so it needs script; without script
+   * the meta refresh to `redirectTo` still applies.
+   */
+  returnTo?: string;
   /** Open Graph object type. A member's page is a `profile`; everything else is the site. */
   ogType?: "website" | "profile";
   /**
@@ -51,6 +58,7 @@ const {
   contentWide = false,
   ogImage,
   redirectTo,
+  returnTo,
   ogType = "website",
   jsonLd,
 } = Astro.props;
@@ -320,7 +328,26 @@ const BRAND_SLOTS: BrandSlot[] = [
     <title>{title}</title>
     <meta name="description" content={metaDescription} />
     {noindex && <meta name="robots" content="noindex, nofollow" />}
-    {redirectTo && <meta http-equiv="refresh" content={`0;url=${redirectTo}`} />}
+    {/* A RETURN VISIT IS REMEMBERED (2026-11-07, Josh: "store something so
+        we know when someone was already on the site"). One flag in this
+        browser's localStorage, written by every page: no cookie, nothing
+        sent anywhere, no id. The home page reads it to send a returning
+        visitor past the story to the Portfolios (returnTo), so the home page
+        itself must not write it before reading. Strictly functional, so no
+        consent banner; the privacy page names it. */}
+    {redirectTo && returnTo ? (
+      <>
+        <script is:inline define:vars={{ redirectTo, returnTo }}>
+          let back = false;
+          try { back = localStorage.getItem("vscn:visited") === "1"; } catch { /* storage blocked: a first visit */ }
+          location.replace((back ? returnTo : redirectTo) + location.search + location.hash);
+        </script>
+        <noscript><meta http-equiv="refresh" content={`0;url=${redirectTo}`} /></noscript>
+      </>
+    ) : (
+      <script is:inline>try { localStorage.setItem("vscn:visited", "1"); } catch { /* storage blocked: nothing kept */ }</script>
+    )}
+    {redirectTo && !returnTo && <meta http-equiv="refresh" content={`0;url=${redirectTo}`} />}
     <link rel="canonical" href={canonicalUrl} />
     {alternates.map((a) => <link rel="alternate" hreflang={a.hreflang} href={a.href} />)}
 
